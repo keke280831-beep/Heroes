@@ -118,15 +118,55 @@
       display: none;
     }
 
+    /* 懸浮娃娃樣式 */
+    .floating-doll {
+      position: fixed;
+      z-index: 100;
+      width: 150px; /* 圖片大小 */
+      height: auto;
+      cursor: grab; /* 滑鼠拖曳時顯示抓取游標 */
+      user-select: none; /* 防止選取文字或圖片 */
+      transition: transform 0.3s ease; /* 平滑移動效果 */
+      animation: float 3s ease-in-out infinite; /* 上下漂浮動畫 */
+    }
+
+    .floating-doll.dragging {
+      cursor: grabbing; /* 拖曳中的游標 */
+      animation: none; /* 拖曳時暫停漂浮動畫 */
+      opacity: 0.8; /* 拖曳時略透明 */
+    }
+
+    #doll-left {
+      left: 20px;
+      top: 50%;
+    }
+
+    #doll-right {
+      right: 20px;
+      top: 50%;
+    }
+	#doll-right2 {
+      right: 20px;
+      top: 10%;
+    }
+
+    /* 漂浮動畫 */
+    @keyframes float {
+      0%, 100% { transform: translateY(0); }
+      50% { transform: translateY(-10px); }
+    }
+
     /* 響應式設計 */
     @media (max-width: 768px) {
       table, th, td { font-size: 14px; }
       h1 { font-size: 1.8em; }
+      .floating-doll { width: 80px; }
     }
 
     @media (max-width: 480px) {
       table, th, td { font-size: 12px; padding: 8px 10px; }
       h1 { font-size: 1.4em; }
+      .floating-doll { width: 60px; }
     }
 
     /* 表格淡入淡出動畫 */
@@ -139,6 +179,9 @@
 <body>
   <canvas id="particle-background"></canvas>
   <div id="loading-overlay">讀取中…</div>
+  <img id="doll-left" class="floating-doll" src="doll-left.png" alt="Left Doll">
+  <img id="doll-right" class="floating-doll" src="doll-right.png" alt="Right Doll">
+  <img id="doll-right2" class="floating-doll" src="doll-right2.png" alt="Right Doll2">
   <h1>Heroes 歌唱比賽 (節目單)</h1>
   <p>⏳ 頁面將於 <span id="countdown">10</span> 秒後自動刷新</p>
   <div id="error-message">無法載入資料，請稍後再試</div>
@@ -155,23 +198,23 @@
   </table>
 
   <script>
-    // 粒子背景效果
+    // 粒子背景效果（保持不變）
     const canvas = document.getElementById('particle-background');
     const ctx = canvas.getContext('2d');
     canvas.width = window.innerWidth;
     canvas.height = window.innerHeight;
 
     const particlesArray = [];
-    const numberOfParticles = 80; // 減少粒子數量以提高性能
+    const numberOfParticles = 80;
 
     class Particle {
       constructor() {
         this.x = Math.random() * canvas.width;
         this.y = Math.random() * canvas.height;
         this.size = Math.random() * 2 + 1;
-        this.speedX = Math.random() * 0.4 - 0.2; // 降低速度
+        this.speedX = Math.random() * 0.4 - 0.2;
         this.speedY = Math.random() * 0.4 - 0.2;
-        this.opacity = Math.random() * 0.2 + 0.1; // 降低透明度
+        this.opacity = Math.random() * 0.2 + 0.1;
       }
 
       update() {
@@ -212,7 +255,68 @@
     initParticles();
     animateParticles();
 
-    // 表單邏輯
+    // 拖曳功能
+    const dolls = document.querySelectorAll('.floating-doll');
+    dolls.forEach(doll => {
+      let isDragging = false;
+      let currentX, currentY, initialX, initialY;
+
+      // 滑鼠事件
+      doll.addEventListener('mousedown', startDragging);
+      document.addEventListener('mousemove', drag);
+      document.addEventListener('mouseup', stopDragging);
+
+      // 觸控事件
+      doll.addEventListener('touchstart', startDragging, { passive: false });
+      document.addEventListener('touchmove', drag, { passive: false });
+      document.addEventListener('touchend', stopDragging);
+
+      function startDragging(e) {
+        e.preventDefault();
+        doll.classList.add('dragging');
+        isDragging = true;
+
+        if (e.type === 'touchstart') {
+          initialX = e.touches[0].clientX - currentX;
+          initialY = e.touches[0].clientY - currentY;
+        } else {
+          initialX = e.clientX - currentX;
+          initialY = e.clientY - currentY;
+        }
+      }
+
+      function drag(e) {
+        if (isDragging) {
+          e.preventDefault();
+          if (e.type === 'touchmove') {
+            currentX = e.touches[0].clientX - initialX;
+            currentY = e.touches[0].clientY - initialY;
+          } else {
+            currentX = e.clientX - initialX;
+            currentY = e.clientY - initialY;
+          }
+
+          // 限制拖曳範圍在視窗內
+          currentX = Math.max(0, Math.min(currentX, window.innerWidth - doll.offsetWidth));
+          currentY = Math.max(0, Math.min(currentY, window.innerHeight - doll.offsetHeight));
+
+          doll.style.left = currentX + 'px';
+          doll.style.top = currentY + 'px';
+          doll.style.right = 'auto'; // 清除初始定位
+        }
+      }
+
+      function stopDragging() {
+        isDragging = false;
+        doll.classList.remove('dragging');
+      }
+
+      // 初始化位置
+      currentX = parseFloat(getComputedStyle(doll).left) || (doll.id === 'doll-left' ? 20 : window.innerWidth - 120);
+      currentY = parseFloat(getComputedStyle(doll).top) || window.innerHeight / 2;
+    });
+
+    // 表單邏輯（保持不變）
     const API_URL = "https://script.google.com/macros/s/AKfycbzXap2cdii9oK6KzA2qG5sc6IhOJhvzVSMTzAldKj0pCTK6sRB3A3-HcarcFM2LlJkOyw/exec";
     const POLL_SECONDS = 10;
     let countdown = POLL_SECONDS;
@@ -242,7 +346,6 @@
         if (!res.ok) throw new Error(`HTTP error! Status: ${res.status}`);
         const data = await res.json();
 
-        // 驗證資料格式
         if (!Array.isArray(data) || data.length === 0 || !data.every(row => 'id' in row && 'title' in row && 'singer' in row && 'done' in row)) {
           throw new Error("資料格式不正確");
         }
@@ -299,7 +402,6 @@
       });
     }
 
-    // 初始化
     fetchData();
   </script>
 </body>
