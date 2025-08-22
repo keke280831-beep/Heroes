@@ -149,7 +149,6 @@
     #doll-right2 {
       right: 20px;
       top: 10%;
-
     }
 
     /* 漂浮動畫 */
@@ -270,6 +269,7 @@
       let speedX = 0, speedY = 0;
       let lastX, lastY, lastTime; // 用於計算甩動速度
       let isBouncing = false; // 是否處於反彈狀態
+      let touchStartX, touchStartY; // 記錄觸控開始座標
 
       // 滑鼠事件
       doll.addEventListener('mousedown', startDragging);
@@ -281,14 +281,36 @@
       document.addEventListener('touchmove', drag, { passive: false });
       document.addEventListener('touchend', stopDragging);
 
-      // 為 doll-right2 添加點擊事件
+      // 為 doll-right2 添加點擊和觸控點擊檢測
       if (doll.id === 'doll-right2') {
+        // 滑鼠點擊
         doll.addEventListener('click', () => {
-          if (!isDragging && !dollHideCreated) { // 僅在非拖曳且未創建 doll-hide 時計數
+          if (!isDragging && !dollHideCreated) {
             dollRight2ClickCount++;
             if (dollRight2ClickCount >= 10) {
               createDollHide();
-              dollHideCreated = true; // 防止重複創建
+              dollHideCreated = true;
+            }
+          }
+        });
+
+        // 觸控點擊檢測
+        doll.addEventListener('touchstart', (e) => {
+          touchStartX = e.touches[0].clientX;
+          touchStartY = e.touches[0].clientY;
+        }, { passive: false });
+
+        doll.addEventListener('touchend', (e) => {
+          if (!dollHideCreated) {
+            const touchEndX = e.changedTouches[0].clientX;
+            const touchEndY = e.changedTouches[0].clientY;
+            // 若觸控移動距離小於 10 像素，視為點擊
+            if (Math.abs(touchEndX - touchStartX) < 10 && Math.abs(touchEndY - touchStartY) < 10) {
+              dollRight2ClickCount++;
+              if (dollRight2ClickCount >= 10) {
+                createDollHide();
+                dollHideCreated = true;
+              }
             }
           }
         });
@@ -446,7 +468,7 @@
       document.addEventListener('mouseup', stopDragging);
       dollHide.addEventListener('touchstart', startDragging, { passive: false });
       document.addEventListener('touchmove', drag, { passive: false });
-      document.addEventListener('touchend', stopDragging);
+      dollHide.addEventListener('touchend', stopDragging);
 
       function startDragging(e) {
         e.preventDefault();
