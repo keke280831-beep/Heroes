@@ -151,6 +151,33 @@
       top: 10%;
     }
 
+    /* 隱藏開關樣式 */
+    #toggle-switch {
+      position: fixed;
+      right: 20px;
+      bottom: 20px;
+      width: 80px;
+      height: 40px;
+      background: linear-gradient(145deg, #2a2a2a, #1c1c1c);
+      border: 2px solid #ffd700;
+      border-radius: 20px;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      color: #ffd700;
+      font-size: 14px;
+      font-weight: bold;
+      cursor: pointer;
+      z-index: 200;
+      box-shadow: 0 4px 8px rgba(0, 0, 0, 0.5);
+      transition: transform 0.2s ease, background 0.2s ease;
+    }
+
+    #toggle-switch:hover {
+      transform: scale(1.1);
+      background: linear-gradient(145deg, #555, #333);
+    }
+
     /* 漂浮動畫 */
     @keyframes float {
       0%, 100% { transform: translateY(0); }
@@ -163,6 +190,7 @@
       h1 { font-size: 1.8em; }
       .floating-doll { width: 80px; }
       #doll-right2 { max-width: 60px; }
+      #toggle-switch { width: 60px; height: 30px; font-size: 12px; }
     }
 
     @media (max-width: 480px) {
@@ -170,6 +198,7 @@
       h1 { font-size: 1.4em; }
       .floating-doll { width: 60px; }
       #doll-right2 { max-width: 40px; }
+      #toggle-switch { width: 50px; height: 25px; font-size: 10px; }
     }
 
     /* 表格淡入淡出動畫 */
@@ -185,6 +214,7 @@
   <img id="doll-left" class="floating-doll" src="doll-left.png" alt="Left Doll">
   <img id="doll-right" class="floating-doll" src="doll-right.png" alt="Right Doll">
   <img id="doll-right2" class="floating-doll" src="doll-right2.png" alt="Right Doll2">
+  <div id="toggle-switch">關閉玩偶</div>
   <h1>Heroes 歌唱比賽 (節目單)</h1>
   <p>⏳ 頁面將於 <span id="countdown">10</span> 秒後自動刷新</p>
   <div id="error-message">無法載入資料，請稍後再試</div>
@@ -261,6 +291,7 @@
     // 拖曳與甩動反彈功能，並新增點擊 doll-right2 10 次出現 doll-hide
     let dollRight2ClickCount = 0; // 記錄 doll-right2 點擊次數
     let dollHideCreated = false; // 標記是否已創建 doll-hide
+    let isDollsVisible = true; // 追蹤娃娃顯示狀態
 
     const dolls = document.querySelectorAll('.floating-doll');
     dolls.forEach(doll => {
@@ -285,7 +316,7 @@
       if (doll.id === 'doll-right2') {
         // 滑鼠點擊
         doll.addEventListener('click', () => {
-          if (!isDragging && !dollHideCreated) {
+          if (!isDragging && !dollHideCreated && isDollsVisible) {
             dollRight2ClickCount++;
             if (dollRight2ClickCount >= 10) {
               createDollHide();
@@ -301,7 +332,7 @@
         }, { passive: false });
 
         doll.addEventListener('touchend', (e) => {
-          if (!dollHideCreated) {
+          if (!dollHideCreated && isDollsVisible) {
             const touchEndX = e.changedTouches[0].clientX;
             const touchEndY = e.changedTouches[0].clientY;
             // 若觸控移動距離小於 10 像素，視為點擊
@@ -452,6 +483,7 @@
       const offsetY = parseFloat(dollRight2.style.top) + 20; // 下移 20px
       dollHide.style.left = Math.min(offsetX, window.innerWidth - 100) + 'px'; // 確保不超出邊界
       dollHide.style.top = Math.min(offsetY, window.innerHeight - 100) + 'px';
+      dollHide.style.display = isDollsVisible ? 'block' : 'none'; // 根據開關狀態設置顯示
       document.body.appendChild(dollHide);
 
       // 為 doll-hide 應用相同的拖曳與反彈邏輯
@@ -468,7 +500,7 @@
       document.addEventListener('mouseup', stopDragging);
       dollHide.addEventListener('touchstart', startDragging, { passive: false });
       document.addEventListener('touchmove', drag, { passive: false });
-      dollHide.addEventListener('touchend', stopDragging);
+      document.addEventListener('touchend', stopDragging);
 
       function startDragging(e) {
         e.preventDefault();
@@ -568,6 +600,23 @@
         }
       }
     }
+
+    // 隱藏開關邏輯
+    const toggleSwitch = document.getElementById('toggle-switch');
+    toggleSwitch.addEventListener('click', () => {
+      isDollsVisible = !isDollsVisible;
+      const dollLeft = document.getElementById('doll-left');
+      const dollRight = document.getElementById('doll-right');
+      const dollRight2 = document.getElementById('doll-right2');
+      const dollHide = document.getElementById('doll-hide');
+      dollLeft.style.display = isDollsVisible ? 'block' : 'none';
+      dollRight.style.display = isDollsVisible ? 'block' : 'none';
+      dollRight2.style.display = isDollsVisible ? 'block' : 'none';
+      if (dollHide) {
+        dollHide.style.display = isDollsVisible ? 'block' : 'none';
+      }
+      toggleSwitch.innerText = isDollsVisible ? '關閉玩偶' : '開啟玩偶';
+    });
 
     // 表單邏輯
     const API_URL = "https://script.google.com/macros/s/AKfycbzXap2cdii9oK6KzA2qG5sc6IhOJhvzVSMTzAldKj0pCTK6sRB3A3-HcarcFM2LlJkOyw/exec";
