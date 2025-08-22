@@ -122,18 +122,18 @@
     .floating-doll {
       position: fixed;
       z-index: 100;
-      width: 150px; /* 圖片大小 */
+      width: 150px; /* 預設圖片大小 */
       height: auto;
-      cursor: grab; /* 滑鼠拖曳時顯示抓取游標 */
-      user-select: none; /* 防止選取文字或圖片 */
-      transition: transform 0.3s ease; /* 平滑移動效果 */
-      animation: float 3s ease-in-out infinite; /* 上下漂浮動畫 */
+      cursor: grab;
+      user-select: none;
+      transition: transform 0.3s ease, left 0.1s ease, top 0.1s ease;
+      animation: float 3s ease-in-out infinite;
     }
 
     .floating-doll.dragging {
-      cursor: grabbing; /* 拖曳中的游標 */
-      animation: none; /* 拖曳時暫停漂浮動畫 */
-      opacity: 0.8; /* 拖曳時略透明 */
+      cursor: grabbing;
+      animation: none;
+      opacity: 0.8;
     }
 
     #doll-left {
@@ -145,9 +145,11 @@
       right: 20px;
       top: 50%;
     }
-	#doll-right2 {
+
+    #doll-right2 {
       right: 20px;
       top: 10%;
+
     }
 
     /* 漂浮動畫 */
@@ -161,12 +163,14 @@
       table, th, td { font-size: 14px; }
       h1 { font-size: 1.8em; }
       .floating-doll { width: 80px; }
+      #doll-right2 { max-width: 60px; }
     }
 
     @media (max-width: 480px) {
       table, th, td { font-size: 12px; padding: 8px 10px; }
       h1 { font-size: 1.4em; }
       .floating-doll { width: 60px; }
+      #doll-right2 { max-width: 40px; }
     }
 
     /* 表格淡入淡出動畫 */
@@ -255,11 +259,17 @@
     initParticles();
     animateParticles();
 
-    // 拖曳功能
+    // 拖曳與甩動反彈功能，並新增點擊 doll-right2 10 次出現 doll-hide
+    let dollRight2ClickCount = 0; // 記錄 doll-right2 點擊次數
+    let dollHideCreated = false; // 標記是否已創建 doll-hide
+
     const dolls = document.querySelectorAll('.floating-doll');
     dolls.forEach(doll => {
       let isDragging = false;
       let currentX, currentY, initialX, initialY;
+      let speedX = 0, speedY = 0;
+      let lastX, lastY, lastTime; // 用於計算甩動速度
+      let isBouncing = false; // 是否處於反彈狀態
 
       // 滑鼠事件
       doll.addEventListener('mousedown', startDragging);
@@ -271,10 +281,26 @@
       document.addEventListener('touchmove', drag, { passive: false });
       document.addEventListener('touchend', stopDragging);
 
+      // 為 doll-right2 添加點擊事件
+      if (doll.id === 'doll-right2') {
+        doll.addEventListener('click', () => {
+          if (!isDragging && !dollHideCreated) { // 僅在非拖曳且未創建 doll-hide 時計數
+            dollRight2ClickCount++;
+            if (dollRight2ClickCount >= 10) {
+              createDollHide();
+              dollHideCreated = true; // 防止重複創建
+            }
+          }
+        });
+      }
+
       function startDragging(e) {
         e.preventDefault();
         doll.classList.add('dragging');
         isDragging = true;
+        isBouncing = false; // 停止反彈
+        speedX = 0;
+        speedY = 0;
 
         if (e.type === 'touchstart') {
           initialX = e.touches[0].clientX - currentX;
@@ -283,40 +309,245 @@
           initialX = e.clientX - currentX;
           initialY = e.clientY - currentY;
         }
+
+        // 初始化速度計算
+        lastX = e.type === 'touchstart' ? e.touches[0].clientX : e.clientX;
+        lastY = e.type === 'touchstart' ? e.touches[0].clientY : e.clientY;
+        lastTime = Date.now();
       }
 
       function drag(e) {
         if (isDragging) {
           e.preventDefault();
+          const currentTime = Date.now();
+          let clientX, clientY;
+
           if (e.type === 'touchmove') {
-            currentX = e.touches[0].clientX - initialX;
-            currentY = e.touches[0].clientY - initialY;
+            clientX = e.touches[0].clientX;
+            clientY = e.touches[0].clientY;
           } else {
-            currentX = e.clientX - initialX;
-            currentY = e.clientY - initialY;
+            clientX = e.clientX;
+            clientY = e.clientY;
           }
 
-          // 限制拖曳範圍在視窗內
+          currentX = clientX - initialX;
+          currentY = clientY - initialY;
+
+          // 計算速度（像素/秒）
+          const deltaTime = (currentTime - lastTime) / 1000;
+          if (deltaTime > 0) {
+            speedX = (clientX - lastX) / deltaTime;
+            speedY = (clientY - lastY) / deltaTime;
+          }
+
+          // 限制拖曳範圍
           currentX = Math.max(0, Math.min(currentX, window.innerWidth - doll.offsetWidth));
           currentY = Math.max(0, Math.min(currentY, window.innerHeight - doll.offsetHeight));
 
           doll.style.left = currentX + 'px';
           doll.style.top = currentY + 'px';
-          doll.style.right = 'auto'; // 清除初始定位
+          doll.style.right = 'auto';
+
+          // 更新上次位置和時間
+          lastX = clientX;
+          lastY = clientY;
+          lastTime = currentTime;
         }
       }
 
       function stopDragging() {
         isDragging = false;
         doll.classList.remove('dragging');
+        isBouncing = true; // 啟動反彈
+        // 限制初始速度，防止過快
+        speedX = Math.max(-500, Math.min(speedX, 500));
+        speedY = Math.max(-500, Math.min(speedY, 500));
+        updateBounce();
+      }
+
+      // 反彈動畫
+      function updateBounce() {
+        if (isBouncing) {
+          currentX += speedX / 60; // 假設 60fps
+          currentY += speedY / 60;
+
+          // 邊界檢測與反彈
+          if (currentX <= 0 || currentX >= window.innerWidth - doll.offsetWidth) {
+            speedX *= -0.8; // 反轉並輕微減速
+            currentX = Math.max(0, Math.min(currentX, window.innerWidth - doll.offsetWidth));
+            doll.style.transform = 'scale(1.1)'; // 反彈時短暫放大
+            setTimeout(() => { doll.style.transform = ''; }, 100);
+          }
+          if (currentY <= 0 || currentY >= window.innerHeight - doll.offsetHeight) {
+            speedY *= -0.8; // 反轉並輕微減速
+            currentY = Math.max(0, Math.min(currentY, window.innerHeight - doll.offsetHeight));
+            doll.style.transform = 'scale(1.1)';
+            setTimeout(() => { doll.style.transform = ''; }, 100);
+          }
+
+          doll.style.left = currentX + 'px';
+          doll.style.top = currentY + 'px';
+
+          // 速度衰減
+          speedX *= 0.98;
+          speedY *= 0.98;
+
+          // 當速度低於閾值時停止反彈，恢復漂浮
+          if (Math.abs(speedX) < 1 && Math.abs(speedY) < 1) {
+            isBouncing = false;
+          }
+
+          requestAnimationFrame(updateBounce);
+        }
       }
 
       // 初始化位置
-      currentX = parseFloat(getComputedStyle(doll).left) || (doll.id === 'doll-left' ? 20 : window.innerWidth - 120);
-      currentY = parseFloat(getComputedStyle(doll).top) || window.innerHeight / 2;
+      if (doll.id === 'doll-left') {
+        currentX = 20;
+        currentY = window.innerHeight / 2;
+      } else if (doll.id === 'doll-right') {
+        currentX = window.innerWidth - doll.offsetWidth - 20;
+        currentY = window.innerHeight / 2;
+      } else if (doll.id === 'doll-right2') {
+        currentX = window.innerWidth - doll.offsetWidth - 20;
+        currentY = window.innerHeight * 0.1;
+      }
+
+      doll.style.left = currentX + 'px';
+      doll.style.top = currentY + 'px';
     });
 
-    // 表單邏輯（保持不變）
+    // 創建 doll-hide 圖片的函數
+    function createDollHide() {
+      const dollHide = document.createElement('img');
+      dollHide.id = 'doll-hide';
+      dollHide.className = 'floating-doll';
+      dollHide.src = 'doll-hide.png';
+      dollHide.alt = 'Doll Hide';
+      // 初始化位置（接近 doll-right2，略微偏移）
+      const dollRight2 = document.getElementById('doll-right2');
+      const offsetX = parseFloat(dollRight2.style.left) + 20; // 右移 20px
+      const offsetY = parseFloat(dollRight2.style.top) + 20; // 下移 20px
+      dollHide.style.left = Math.min(offsetX, window.innerWidth - 100) + 'px'; // 確保不超出邊界
+      dollHide.style.top = Math.min(offsetY, window.innerHeight - 100) + 'px';
+      document.body.appendChild(dollHide);
+
+      // 為 doll-hide 應用相同的拖曳與反彈邏輯
+      let isDragging = false;
+      let currentX = parseFloat(dollHide.style.left);
+      let currentY = parseFloat(dollHide.style.top);
+      let initialX, initialY;
+      let speedX = 0, speedY = 0;
+      let lastX, lastY, lastTime;
+      let isBouncing = false;
+
+      dollHide.addEventListener('mousedown', startDragging);
+      document.addEventListener('mousemove', drag);
+      document.addEventListener('mouseup', stopDragging);
+      dollHide.addEventListener('touchstart', startDragging, { passive: false });
+      document.addEventListener('touchmove', drag, { passive: false });
+      document.addEventListener('touchend', stopDragging);
+
+      function startDragging(e) {
+        e.preventDefault();
+        dollHide.classList.add('dragging');
+        isDragging = true;
+        isBouncing = false;
+        speedX = 0;
+        speedY = 0;
+
+        if (e.type === 'touchstart') {
+          initialX = e.touches[0].clientX - currentX;
+          initialY = e.touches[0].clientY - currentY;
+        } else {
+          initialX = e.clientX - currentX;
+          initialY = e.clientY - currentY;
+        }
+
+        lastX = e.type === 'touchstart' ? e.touches[0].clientX : e.clientX;
+        lastY = e.type === 'touchstart' ? e.touches[0].clientY : e.clientY;
+        lastTime = Date.now();
+      }
+
+      function drag(e) {
+        if (isDragging) {
+          e.preventDefault();
+          const currentTime = Date.now();
+          let clientX, clientY;
+
+          if (e.type === 'touchmove') {
+            clientX = e.touches[0].clientX;
+            clientY = e.touches[0].clientY;
+          } else {
+            clientX = e.clientX;
+            clientY = e.clientY;
+          }
+
+          currentX = clientX - initialX;
+          currentY = clientY - initialY;
+
+          const deltaTime = (currentTime - lastTime) / 1000;
+          if (deltaTime > 0) {
+            speedX = (clientX - lastX) / deltaTime;
+            speedY = (clientY - lastY) / deltaTime;
+          }
+
+          currentX = Math.max(0, Math.min(currentX, window.innerWidth - dollHide.offsetWidth));
+          currentY = Math.max(0, Math.min(currentY, window.innerHeight - dollHide.offsetHeight));
+
+          dollHide.style.left = currentX + 'px';
+          dollHide.style.top = currentY + 'px';
+          dollHide.style.right = 'auto';
+
+          lastX = clientX;
+          lastY = clientY;
+          lastTime = currentTime;
+        }
+      }
+
+      function stopDragging() {
+        isDragging = false;
+        dollHide.classList.remove('dragging');
+        isBouncing = true;
+        speedX = Math.max(-500, Math.min(speedX, 500));
+        speedY = Math.max(-500, Math.min(speedY, 500));
+        updateBounce();
+      }
+
+      function updateBounce() {
+        if (isBouncing) {
+          currentX += speedX / 60;
+          currentY += speedY / 60;
+
+          if (currentX <= 0 || currentX >= window.innerWidth - dollHide.offsetWidth) {
+            speedX *= -0.8;
+            currentX = Math.max(0, Math.min(currentX, window.innerWidth - dollHide.offsetWidth));
+            dollHide.style.transform = 'scale(1.1)';
+            setTimeout(() => { dollHide.style.transform = ''; }, 100);
+          }
+          if (currentY <= 0 || currentY >= window.innerHeight - dollHide.offsetHeight) {
+            speedY *= -0.8;
+            currentY = Math.max(0, Math.min(currentY, window.innerHeight - dollHide.offsetHeight));
+            dollHide.style.transform = 'scale(1.1)';
+            setTimeout(() => { dollHide.style.transform = ''; }, 100);
+          }
+
+          dollHide.style.left = currentX + 'px';
+          dollHide.style.top = currentY + 'px';
+
+          speedX *= 0.98;
+          speedY *= 0.98;
+
+          if (Math.abs(speedX) < 1 && Math.abs(speedY) < 1) {
+            isBouncing = false;
+          }
+
+          requestAnimationFrame(updateBounce);
+        }
+      }
+    }
+
+    // 表單邏輯
     const API_URL = "https://script.google.com/macros/s/AKfycbzXap2cdii9oK6KzA2qG5sc6IhOJhvzVSMTzAldKj0pCTK6sRB3A3-HcarcFM2LlJkOyw/exec";
     const POLL_SECONDS = 10;
     let countdown = POLL_SECONDS;
@@ -347,7 +578,7 @@
         const data = await res.json();
 
         if (!Array.isArray(data) || data.length === 0 || !data.every(row => 'id' in row && 'title' in row && 'singer' in row && 'done' in row)) {
-          throw new Error("資料格式不正確");
+          throw new Error("資料格式不正確，缺少必要的欄位：id, title, singer, done");
         }
 
         if (firstLoad) {
@@ -371,6 +602,7 @@
         errorMessage.style.display = "none";
       } catch (err) {
         console.error("讀取失敗", err);
+        errorMessage.textContent = `無法載入資料：${err.message}，請稍後再試`;
         if (firstLoad) {
           loadingOverlay.style.display = "none";
           errorMessage.style.display = "block";
