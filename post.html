@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8" />
+  <title>Heroes 歌唱比賽｜投票專區</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <style>
+    body{font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif;background:#111;color:#f0f0f0;margin:0;padding:20px;text-align:center}
+    h1{color:#ffd700;text-shadow:2px 2px 4px #000,0 0 10px #ffd700;margin:8px 0 6px}
+    .updated{margin:0 auto 12px;color:#00ffff;font-size:.95em}
+    a.back{color:#ffd700;text-decoration:none;border:1px solid #ffd700;border-radius:8px;padding:8px 12px;display:inline-block;margin:2px 0 14px}
+    #search{margin:8px auto 16px;max-width:420px;width:90%;padding:10px;border-radius:10px;border:1px solid #555;background:#1b1b1b;color:#eee}
+    table{border-collapse:collapse;margin:10px auto;width:95%;max-width:1100px;background:linear-gradient(145deg,#2a2a2a,#1c1c1c);border:3px solid transparent;border-radius:12px;box-shadow:0 8px 32px rgba(0,0,0,.5),inset 0 0 10px rgba(255,255,255,.08)}
+    th,td{border:1px solid #444;padding:12px 14px;text-align:center}
+    th{background:linear-gradient(to bottom,#666,#222);color:#ffd700;border-bottom:2px solid #ffd700}
+    tbody tr:hover{background:linear-gradient(145deg,#555,#333,#666)}
+    button.vote{cursor:pointer;background:#ffd700;color:#111;border:0;border-radius:8px;padding:8px 12px;font-weight:700;box-shadow:0 4px 10px rgba(255,215,0,.25)}
+    button.vote[disabled]{opacity:.4;cursor:not-allowed}
+    #err{margin:10px auto 0;color:#ff6666}
+
+    /* Modal 與 Loading 樣式省略，保持和前一版一致 */
+  </style>
+</head>
+<body>
+  <!-- 內容同前一版 -->
+
+<script>
+  const API_URL = "https://script.google.com/macros/s/AKfycbzXap2cdii9oK6KzA2qG5sc6IhOJhvzVSMTzAldKj0pCTK6sRB3A3-HcarcFM2LlJkOyw/exec";
+  const VOTED_GLOBAL_KEY = "heroes_voted_global";
+
+  // ... render, applyFilter, load 等函式保持不變 ...
+
+  function setButtonLoading(id, isLoading){
+    const btn = document.getElementById('b-' + id);
+    if (!btn) return;
+    if (isLoading){
+      btn.textContent = '處理中…';
+      btn.disabled = true;
+    }
+  }
+
+  async function vote(id){
+    if (localStorage.getItem(VOTED_GLOBAL_KEY) === '1') return;
+    errEl.textContent = '';
+    showLoading();
+    setButtonLoading(id, true);
+    document.querySelectorAll('button.vote').forEach(b => b.disabled = true);
+
+    try{
+      const res = await fetch(API_URL, {
+        method: 'POST',
+        body: JSON.stringify({ action:'vote', id })
+      });
+      if(!res.ok) throw new Error('HTTP ' + res.status);
+      const json = await res.json();
+      if(!json.success){
+        throw new Error(json.msg || '投票失敗');
+      }
+      // 更新票數
+      const cell = document.getElementById('v-' + id);
+      if (cell) cell.textContent = json.votes;
+
+      // 改成全域已投，所有按鈕文字統一「投票完畢」
+      localStorage.setItem(VOTED_GLOBAL_KEY, '1');
+      document.querySelectorAll('button.vote').forEach(b=>{
+        b.textContent = '投票完畢';
+        b.disabled = true;
+      });
+
+      showModal();
+    }catch(e){
+      console.error(e);
+      errEl.textContent = '投票失敗：' + e.message;
+      // 失敗恢復按鈕
+      const btn = document.getElementById('b-' + id);
+      if (btn){
+        btn.textContent = '投他一票';
+        btn.disabled = false;
+      }
+    }finally{
+      hideLoading();
+    }
+  }
+
+  // 其他程式碼保持和前一版相同
+</script>
+</body>
+</html>
