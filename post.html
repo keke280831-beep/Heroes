@@ -15,36 +15,196 @@
     th{background:linear-gradient(to bottom,#666,#222);color:#ffd700;border-bottom:2px solid #ffd700}
     tbody tr:hover{background:linear-gradient(145deg,#555,#333,#666)}
     button.vote{cursor:pointer;background:#ffd700;color:#111;border:0;border-radius:8px;padding:8px 12px;font-weight:700;box-shadow:0 4px 10px rgba(255,215,0,.25)}
-    button.vote[disabled]{opacity:.4;cursor:not-allowed}
+    button.vote[disabled]{opacity:.6;cursor:not-allowed}
     #err{margin:10px auto 0;color:#ff6666}
 
-    /* Modal 與 Loading 樣式省略，保持和前一版一致 */
+    /* Modal（投票成功） */
+    .modal-overlay{
+      position:fixed;inset:0;background:rgba(0,0,0,.6);
+      display:flex;align-items:center;justify-content:center;z-index:9999;
+      opacity:0;pointer-events:none;transition:opacity .2s ease;
+    }
+    .modal-overlay.show{opacity:1;pointer-events:auto;}
+    .modal{
+      background:#1b1b1b;border:1px solid #ffd700;border-radius:12px;
+      padding:18px 20px;max-width:320px;width:90%;
+      box-shadow:0 10px 30px rgba(0,0,0,.5), inset 0 0 8px rgba(255,255,255,.06);
+    }
+    .modal h3{margin:0 0 8px;color:#ffd700}
+    .modal p{margin:0 0 12px;color:#eee}
+    .modal .actions{display:flex;justify-content:center}
+    .modal .actions button{
+      background:#ffd700;color:#111;border:0;border-radius:8px;padding:8px 14px;font-weight:700;
+      box-shadow:0 4px 10px rgba(255,215,0,.25);cursor:pointer;
+    }
+
+    /* 全頁 Loading 遮罩（投票中 & 初始） */
+    .loading-overlay{
+      position:fixed;inset:0;background:rgba(0,0,0,.55);
+      display:flex;flex-direction:column;align-items:center;justify-content:center;
+      z-index:9998;
+      opacity:0;pointer-events:none;transition:opacity .15s ease;
+    }
+    .loading-overlay.show{opacity:1;pointer-events:auto;}
+    .spinner{
+      width:56px;height:56px;border:4px solid rgba(255,255,255,.2);
+      border-top-color:#ffd700;border-radius:50%;
+      animation:spin 1s linear infinite;margin-bottom:10px;
+    }
+    .loading-text{color:#ffd700}
+    @keyframes spin{to{transform:rotate(360deg)}}
   </style>
 </head>
 <body>
-  <!-- 內容同前一版 -->
+  <h1>🎤 投票專區</h1>
+  <div id="updated" class="updated">更新時間：—</div>
+  <a class="back" href="./">← 返回節目單</a>
+
+  <input id="search" type="text" placeholder="搜尋：序號 / 歌曲 / 演唱者…" />
+
+  <table>
+    <thead>
+      <tr>
+        <th>序號</th>
+        <th>演唱歌曲</th>
+        <th>演唱者</th>
+        <th>目前票數（H）</th>
+        <th>操作</th>
+      </tr>
+    </thead>
+    <tbody id="tbody"><tr><td colspan="5">載入中…</td></tr></tbody>
+  </table>
+
+  <div id="err"></div>
+
+  <!-- 成功 Modal -->
+  <div id="overlay" class="modal-overlay">
+    <div class="modal">
+      <h3>投票成功</h3>
+      <p>感謝你的支持 🙌</p>
+      <div class="actions">
+        <button id="modal-ok">知道了</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 投票中 Loading -->
+  <div id="loading" class="loading-overlay">
+    <div class="spinner"></div>
+    <div class="loading-text">處理中…</div>
+  </div>
+
+  <!-- 初始載入 Loading -->
+  <div id="init-loading" class="loading-overlay show">
+    <div class="spinner"></div>
+    <div class="loading-text">載入中…</div>
+  </div>
 
 <script>
   const API_URL = "https://script.google.com/macros/s/AKfycbzXap2cdii9oK6KzA2qG5sc6IhOJhvzVSMTzAldKj0pCTK6sRB3A3-HcarcFM2LlJkOyw/exec";
   const VOTED_GLOBAL_KEY = "heroes_voted_global";
 
-  // ... render, applyFilter, load 等函式保持不變 ...
+  const tbody = document.getElementById('tbody');
+  const errEl = document.getElementById('err');
+  const updatedEl = document.getElementById('updated');
+  const searchEl = document.getElementById('search');
+  const initLoading = document.getElementById('init-loading');
+  const loading = document.getElementById('loading');
 
-  function setButtonLoading(id, isLoading){
-    const btn = document.getElementById('b-' + id);
-    if (!btn) return;
-    if (isLoading){
-      btn.textContent = '處理中…';
-      btn.disabled = true;
+  // Modal
+  const overlay = document.getElementById('overlay');
+  const modalOk = document.getElementById('modal-ok');
+  let autoCloseTimer = null;
+  function showModal(){
+    overlay.classList.add('show');
+    clearTimeout(autoCloseTimer);
+    autoCloseTimer = setTimeout(hideModal, 1500);
+  }
+  function hideModal(){
+    overlay.classList.remove('show');
+    clearTimeout(autoCloseTimer);
+  }
+  modalOk.addEventListener('click', hideModal);
+  overlay.addEventListener('click', (e)=>{ if(e.target===overlay) hideModal(); });
+
+  function showLoading(){ loading.classList.add('show'); }
+  function hideLoading(){ loading.classList.remove('show'); }
+
+  let rows = [];
+  let filtered = [];
+
+  function hasVotedGlobal(){ return localStorage.getItem(VOTED_GLOBAL_KEY) === '1'; }
+  function setVotedGlobal(){ localStorage.setItem(VOTED_GLOBAL_KEY, '1'); }
+
+  function render(list){
+    const votedAll = hasVotedGlobal();
+    tbody.innerHTML = '';
+    if(!list.length){
+      tbody.innerHTML = `<tr><td colspan="5">沒有資料</td></tr>`;
+      return;
+    }
+    list.forEach(r=>{
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td>${r.id ?? ''}</td>
+        <td>${r.title ?? ''}</td>
+        <td>${r.singer ?? ''}</td>
+        <td id="v-${r.id}">${typeof r.votes === 'number' ? r.votes : 0}</td>
+        <td>
+          <button class="vote" id="b-${r.id}" ${votedAll ? 'disabled' : ''}>
+            ${votedAll ? '投票完畢' : '投他一票'}
+          </button>
+        </td>
+      `;
+      tbody.appendChild(tr);
+      tr.querySelector('button.vote').addEventListener('click', ()=> vote(r.id));
+    });
+  }
+
+  function applyFilter(){
+    const q = searchEl.value.trim().toLowerCase();
+    if(!q){ filtered = rows.slice(); }
+    else{
+      filtered = rows.filter(r =>
+        String(r.id ?? '').toLowerCase().includes(q) ||
+        String(r.title ?? '').toLowerCase().includes(q) ||
+        String(r.singer ?? '').toLowerCase().includes(q)
+      );
+    }
+    render(filtered);
+  }
+
+  async function load(){
+    errEl.textContent = '';
+    try{
+      const res = await fetch(API_URL, { cache:'no-store' });
+      if(!res.ok) throw new Error('HTTP ' + res.status);
+      const data = await res.json();
+      rows = Array.isArray(data) ? data.slice().sort((a,b)=>Number(a.id)-Number(b.id)) : [];
+      filtered = rows.slice();
+      render(filtered);
+      updatedEl.textContent = '更新時間：' + new Date().toLocaleString();
+    }catch(e){
+      console.error(e);
+      errEl.textContent = '讀取失敗：' + e.message;
+      tbody.innerHTML = `<tr><td colspan="5">讀取失敗</td></tr>`;
+    }finally{
+      // 初始載入完成，移除遮罩
+      initLoading.classList.remove('show');
     }
   }
 
+  function disableAllButtons(){
+    document.querySelectorAll('button.vote').forEach(b=>{
+      b.textContent = '投票完畢';
+      b.disabled = true;
+    });
+  }
+
   async function vote(id){
-    if (localStorage.getItem(VOTED_GLOBAL_KEY) === '1') return;
+    if (hasVotedGlobal()) return;
     errEl.textContent = '';
     showLoading();
-    setButtonLoading(id, true);
-    document.querySelectorAll('button.vote').forEach(b => b.disabled = true);
 
     try{
       const res = await fetch(API_URL, {
@@ -53,36 +213,24 @@
       });
       if(!res.ok) throw new Error('HTTP ' + res.status);
       const json = await res.json();
-      if(!json.success){
-        throw new Error(json.msg || '投票失敗');
-      }
-      // 更新票數
+      if(!json.success){ throw new Error(json.msg || '投票失敗'); }
+
       const cell = document.getElementById('v-' + id);
       if (cell) cell.textContent = json.votes;
 
-      // 改成全域已投，所有按鈕文字統一「投票完畢」
-      localStorage.setItem(VOTED_GLOBAL_KEY, '1');
-      document.querySelectorAll('button.vote').forEach(b=>{
-        b.textContent = '投票完畢';
-        b.disabled = true;
-      });
-
+      setVotedGlobal();
+      disableAllButtons();
       showModal();
     }catch(e){
       console.error(e);
       errEl.textContent = '投票失敗：' + e.message;
-      // 失敗恢復按鈕
-      const btn = document.getElementById('b-' + id);
-      if (btn){
-        btn.textContent = '投他一票';
-        btn.disabled = false;
-      }
     }finally{
       hideLoading();
     }
   }
 
-  // 其他程式碼保持和前一版相同
+  searchEl.addEventListener('input', applyFilter);
+  load();
 </script>
 </body>
 </html>
