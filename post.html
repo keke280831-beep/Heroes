@@ -5,11 +5,18 @@
   <title>Heroes 歌唱比賽｜投票專區</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <style>
-    body{font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif;background:#111;color:#f0f0f0;margin:0;padding:20px;text-align:center}
+    /* 背景與整體 */
+    body{font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif;background:#111;color:#f0f0f0;margin:0;padding:20px;text-align:center;position:relative;min-height:100vh;overflow-x:hidden}
+    /* 粒子背景畫布：固定鋪滿、置底、不擋互動 */
+    #particle-background{
+      position:fixed;top:0;left:0;width:100vw;height:100vh;z-index:-1;pointer-events:none;
+      filter:opacity(.55); /* 整體降低存在感，避免影響可讀性 */
+    }
+
     h1{color:#ffd700;text-shadow:2px 2px 4px #000,0 0 10px #ffd700;margin:8px 0 6px}
     .sub{margin:0 0 10px;color:#ccc}
     .updated{margin:0 auto 10px;color:#00ffff;font-size:.95em}
-    a.back{color:#ffd700;text-decoration:none;border:1px solid #ffd700;border-radius:8px;padding:8px 12px;display:inline-block;margin:2px 0 14px}
+    a.back{color:#ffd700;text-decoration:none;border:1px solid #ffd700;border-radius:8px;padding:8px 12px;display:inline-block;margin:2px 0 14px;background:rgba(0,0,0,.2)}
     #search{margin:8px auto 16px;max-width:420px;width:90%;padding:10px;border-radius:10px;border:1px solid #555;background:#1b1b1b;color:#eee}
     table{border-collapse:collapse;margin:10px auto;width:95%;max-width:1100px;background:linear-gradient(145deg,#2a2a2a,#1c1c1c);border:3px solid transparent;border-radius:12px;box-shadow:0 8px 32px rgba(0,0,0,.5),inset 0 0 10px rgba(255,255,255,.08)}
     th,td{border:1px solid #444;padding:12px 14px;text-align:center}
@@ -27,9 +34,6 @@
     .modal p{margin:0 0 12px;color:#eee}
     .modal .actions{display:flex;justify-content:center;gap:10px}
     .modal .actions button{background:#ffd700;color:#111;border:0;border-radius:8px;padding:8px 14px;font-weight:700;box-shadow:0 4px 10px rgba(255,215,0,.25);cursor:pointer}
-
-    /* 成功提示 Modal */
-    /* 使用同一套 modal 樣式 */
 
     /* 排行榜 Modal */
     .rank-list{list-style:none;padding:0;margin:6px 0 0;text-align:left}
@@ -52,10 +56,19 @@
 
     /* 自動刷新時表格淡出提示 */
     tbody.fading{opacity:.4;transition:opacity .3s ease}
+
+    /* 小螢幕優化 */
+    @media (max-width: 480px){
+      th,td{padding:10px}
+      .fab{right:12px;bottom:12px}
+    }
   </style>
 </head>
 <body>
-  <h1>🎤 投票專區</h1>
+  <!-- 粒子背景畫布 -->
+  <canvas id="particle-background"></canvas>
+
+  <h1>🎤 Heroes 歌唱比賽｜投票專區</h1>
   <p class="sub">⏳ 頁面將於 <span id="countdown">15</span> 秒後自動刷新</p>
   <div id="updated" class="updated">更新時間：—</div>
   <a class="back" href="./">← 返回節目單</a>
@@ -82,9 +95,7 @@
     <div class="modal">
       <h3>投票成功</h3>
       <p>感謝你的支持 🙌</p>
-      <div class="actions">
-        <button id="ok-btn">知道了</button>
-      </div>
+      <div class="actions"><button id="ok-btn">知道了</button></div>
     </div>
   </div>
 
@@ -93,9 +104,7 @@
     <div class="modal">
       <h3>目前排行榜（前三名）</h3>
       <ul id="rank-list" class="rank-list"></ul>
-      <div class="actions">
-        <button id="rank-close">關閉</button>
-      </div>
+      <div class="actions"><button id="rank-close">關閉</button></div>
     </div>
   </div>
 
@@ -118,7 +127,7 @@
   // === 設定區 ===
   const API_URL = "https://script.google.com/macros/s/AKfycbzXap2cdii9oK6KzA2qG5sc6IhOJhvzVSMTzAldKj0pCTK6sRB3A3-HcarcFM2LlJkOyw/exec";
   const VOTED_GLOBAL_KEY = "heroes_voted_global";
-  const POLL_SECONDS = 15; // 自動刷新秒數（可改）
+  const POLL_SECONDS = 15; // 自動刷新秒數
   // ==============
 
   const tbody = document.getElementById('tbody');
@@ -127,6 +136,7 @@
   const searchEl = document.getElementById('search');
   const initLoading = document.getElementById('init-loading');
   const loading = document.getElementById('loading');
+
   const okOverlay = document.getElementById('ok-overlay');
   const okBtn = document.getElementById('ok-btn');
 
@@ -142,7 +152,42 @@
   let countdown = POLL_SECONDS;
   let countdownTimer = null;
 
-  // ====== 小工具：Modal / Loading ======
+  // ===== 粒子背景 =====
+  (function initParticles(){
+    const canvas = document.getElementById('particle-background');
+    const ctx = canvas.getContext('2d');
+    function resize(){ canvas.width = window.innerWidth; canvas.height = window.innerHeight; }
+    resize(); window.addEventListener('resize', resize);
+
+    const particles = [];
+    const COUNT = Math.min(100, Math.floor((window.innerWidth*window.innerHeight)/15000)); // 依視窗大小調整數量
+    for(let i=0;i<COUNT;i++){
+      particles.push({
+        x: Math.random()*canvas.width,
+        y: Math.random()*canvas.height,
+        r: Math.random()*2 + 1,         // 小顆一點，避免干擾
+        vx: (Math.random()*0.4 - 0.2),
+        vy: (Math.random()*0.4 - 0.2),
+        a: Math.random()*1        // 低透明
+      });
+    }
+    function step(){
+      ctx.clearRect(0,0,canvas.width,canvas.height);
+      for(const p of particles){
+        p.x += p.vx; p.y += p.vy;
+        if(p.x<0 || p.x>canvas.width) p.vx*=-1;
+        if(p.y<0 || p.y>canvas.height) p.vy*=-1;
+        ctx.beginPath();
+        ctx.fillStyle = `rgba(255,255,255,${p.a})`;
+        ctx.arc(p.x,p.y,p.r,0,Math.PI*2);
+        ctx.fill();
+      }
+      requestAnimationFrame(step);
+    }
+    requestAnimationFrame(step);
+  })();
+
+  // ===== Modal / Loading =====
   function showOk(){ okOverlay.classList.add('show'); }
   function hideOk(){ okOverlay.classList.remove('show'); }
   okBtn.addEventListener('click', hideOk);
@@ -153,15 +198,15 @@
 
   function openRank(){ updateTop3(); rankOverlay.classList.add('show'); }
   function closeRank(){ rankOverlay.classList.remove('show'); }
-  rankClose.addEventListener('click', closeRank);
+  document.getElementById('rank-close').addEventListener('click', closeRank);
   rankOverlay.addEventListener('click', (e)=>{ if(e.target===rankOverlay) closeRank(); });
   fab.addEventListener('click', openRank);
 
-  // ====== 狀態存取 ======
+  // ===== 狀態存取 =====
   function hasVotedGlobal(){ return localStorage.getItem(VOTED_GLOBAL_KEY) === '1'; }
   function setVotedGlobal(){ localStorage.setItem(VOTED_GLOBAL_KEY, '1'); }
 
-  // ====== 渲染 ======
+  // ===== 渲染 =====
   function render(list){
     const votedAll = hasVotedGlobal();
     tbody.innerHTML = '';
@@ -200,13 +245,13 @@
     render(filtered);
   }
 
-  // ====== 排行榜（前三名） ======
+  // ===== 排行榜（前三名） =====
   function updateTop3(){
     const list = (rows || []).slice()
       .sort((a,b)=>{
         const va = Number(a.votes)||0, vb = Number(b.votes)||0;
-        if (vb !== va) return vb - va;       // 票數多者在前
-        return Number(a.id) - Number(b.id);  // 票數同分以序號小者在前
+        if (vb !== va) return vb - va;
+        return Number(a.id) - Number(b.id);
       })
       .slice(0,3);
 
@@ -225,7 +270,7 @@
     `).join('') || `<li class="rank-item"><div>暫無資料</div></li>`;
   }
 
-  // ====== 載入資料（支援自動刷新） ======
+  // ===== 載入資料（支援自動刷新） =====
   async function load(isRefresh=false){
     if(!isRefresh) initLoading.classList.add('show');
     errEl.textContent = '';
@@ -235,11 +280,8 @@
       if(!res.ok) throw new Error('HTTP ' + res.status);
       const data = await res.json();
       rows = Array.isArray(data) ? data.slice().sort((a,b)=>Number(a.id)-Number(b.id)) : [];
-      // 依搜尋關鍵字渲染（如果正在搜尋就保留篩選）
-      applyFilter();
+      applyFilter(); // 以目前搜尋狀態渲染
       updatedEl.textContent = '更新時間：' + new Date().toLocaleString();
-
-      // 刷新排行榜內容（若視窗已開也會看到更新）
       updateTop3();
     }catch(e){
       console.error(e);
@@ -251,7 +293,7 @@
     }
   }
 
-  // ====== 自動刷新（和首頁一致） ======
+  // ===== 自動刷新 =====
   function startCountdown(){
     clearInterval(countdownTimer);
     countdown = POLL_SECONDS;
@@ -260,14 +302,13 @@
       countdown--;
       if(countdown <= 0){
         countdown = POLL_SECONDS;
-        // 觸發靜默刷新
-        load(true);
+        load(true); // 靜默刷新
       }
       countdownEl.textContent = countdown;
     }, 1000);
   }
 
-  // ====== 投票流程 ======
+  // ===== 投票流程 =====
   async function vote(id){
     if (hasVotedGlobal()) return;
     errEl.textContent = '';
@@ -281,11 +322,9 @@
       const json = await res.json();
       if(!json.success){ throw new Error(json.msg || '投票失敗'); }
 
-      // 更新該列票數
       const cell = document.getElementById('v-' + id);
       if (cell) cell.textContent = json.votes;
 
-      // 同步 rows 資料（影響排行榜）
       const found = rows.find(r=> String(r.id) === String(id));
       if (found) found.votes = json.votes;
 
@@ -296,11 +335,8 @@
         b.disabled = true;
       });
 
-      // 更新時間 & 排行榜
       updatedEl.textContent = '更新時間：' + new Date().toLocaleString();
       updateTop3();
-
-      // 成功提示
       showOk();
     }catch(e){
       console.error(e);
@@ -310,7 +346,7 @@
     }
   }
 
-  // ====== 啟動 ======
+  // ===== 啟動 =====
   searchEl.addEventListener('input', applyFilter);
   load(false).then(()=>{ startCountdown(); });
 </script>
