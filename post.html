@@ -24,7 +24,7 @@
     tbody tr:hover{background:linear-gradient(145deg,#555,#333,#666)}
     button.vote{cursor:pointer;background:#ffd700;color:#111;border:0;border-radius:8px;padding:8px 12px;font-weight:700;box-shadow:0 4px 10px rgba(255,215,0,.25)}
     button.vote[disabled]{opacity:.6;cursor:not-allowed}
-    #err{margin:10px auto 0;color:#ff6666}
+    #err{margin:10px auto 0;color:#ff6666;display:none}
 
     /* Modal（通用） */
     .modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.6);display:flex;align-items:center;justify-content:center;z-index:9999;opacity:0;pointer-events:none;transition:opacity .2s ease}
@@ -99,6 +99,15 @@
     </div>
   </div>
 
+  <!-- 通用訊息 Modal（錯誤/提示） -->
+  <div id="msg-overlay" class="modal-overlay">
+    <div class="modal">
+      <h3 id="msg-title">提示</h3>
+      <p id="msg-body">—</p>
+      <div class="actions"><button id="msg-btn">知道了</button></div>
+    </div>
+  </div>
+
   <!-- 排行榜 Modal -->
   <div id="rank-overlay" class="modal-overlay">
     <div class="modal">
@@ -125,8 +134,7 @@
 
 <script>
   // === 設定區 ===
-  // 換成你實際的 Apps Script /exec 連結
-  const API_URL = "https://script.google.com/macros/s/AKfycbzMq6VQBIvzeG9xZjk1Hw1UE4UhrmaVyZi6UiiOpsdPrvMJAy-PS4GklxPuF8FGQb0JiQ/exec";
+  const API_URL = "https://script.google.com/macros/s/AKfycbwZR2cTWJ3krasfegEf4ndSzkhnplT73I-yUoZ7VKxs93jd3aTRfu5cJJ1W9BDjoVjp/exec";
   const VOTED_GLOBAL_KEY = "heroes_voted_global";
   const POLL_SECONDS = 15;
 
@@ -140,6 +148,11 @@
   const okOverlay = document.getElementById('ok-overlay');
   const okBtn = document.getElementById('ok-btn');
 
+  const msgOverlay = document.getElementById('msg-overlay');
+  const msgTitle   = document.getElementById('msg-title');
+  const msgBody    = document.getElementById('msg-body');
+  const msgBtn     = document.getElementById('msg-btn');
+
   const rankOverlay = document.getElementById('rank-overlay');
   const rankList = document.getElementById('rank-list');
   const rankClose = document.getElementById('rank-close');
@@ -151,18 +164,6 @@
   let filtered = [];
   let countdown = POLL_SECONDS;
   let countdownTimer = null;
-
-  // ===== 取得外網 IP（非阻塞） =====
-  let CLIENT_IP = 'unknown';
-  async function fetchClientIP(){
-    try{
-      // ipify 公開服務，無需 API Key
-      const r = await fetch('https://api.ipify.org?format=json', { cache:'no-store' });
-      const j = await r.json();
-      if (j && j.ip) CLIENT_IP = j.ip;
-    }catch(_){}
-  }
-  fetchClientIP();
 
   // ===== 粒子背景 =====
   (function initParticles(){
@@ -204,6 +205,15 @@
   function hideOk(){ okOverlay.classList.remove('show'); }
   okBtn.addEventListener('click', hideOk);
   okOverlay.addEventListener('click', (e)=>{ if(e.target===okOverlay) hideOk(); });
+
+  function showMsg(title, body){
+    if (title) msgTitle.textContent = title;
+    if (body)  msgBody.textContent  = body;
+    msgOverlay.classList.add('show');
+  }
+  function hideMsg(){ msgOverlay.classList.remove('show'); }
+  msgBtn.addEventListener('click', hideMsg);
+  msgOverlay.addEventListener('click', (e)=>{ if(e.target===msgOverlay) hideMsg(); });
 
   function showLoading(){ loading.classList.add('show'); }
   function hideLoading(){ loading.classList.remove('show'); }
@@ -282,22 +292,34 @@
     `).join('') || `<li class="rank-item"><div>暫無資料</div></li>`;
   }
 
+  // ===== 取得外網 IP（非阻塞） =====
+  let CLIENT_IP = 'unknown';
+  async function fetchClientIP(){
+    try{
+      const r = await fetch('https://api.ipify.org?format=json', { cache:'no-store' });
+      const j = await r.json();
+      if (j && j.ip) CLIENT_IP = j.ip;
+    }catch(_){}
+  }
+  fetchClientIP();
+
   // ===== 載入資料（支援自動刷新） =====
   async function load(isRefresh=false){
     if(!isRefresh) initLoading.classList.add('show');
-    errEl.textContent = '';
+    errEl.textContent = ''; errEl.style.display = 'none';
     try{
       if(isRefresh) tbody.classList.add('fading');
       const res = await fetch(API_URL, { cache:'no-store' });
       if(!res.ok) throw new Error('HTTP ' + res.status);
       const data = await res.json();
-      rows = Array.isArray(data) ? data.slice().sort((a,b)=>Number(a.id)-Number(b.id)) : [];
+      rows = Array.isArray(data) ? data.slice().sort((a,b)=>Number(a.id)-Number(b.id)) : (Array.isArray(data.rows) ? data.rows.slice().sort((a,b)=>Number(a.id)-Number(b.id)) : []);
       applyFilter();
       updatedEl.textContent = '更新時間：' + new Date().toLocaleString();
       updateTop3();
     }catch(e){
       console.error(e);
-      errEl.textContent = '讀取失敗：' + e.message;
+      // 改用彈窗顯示錯誤
+      showMsg('讀取失敗', e.message || '發生未知錯誤');
       if(!isRefresh) tbody.innerHTML = `<tr><td colspan="5">讀取失敗</td></tr>`;
     }finally{
       if(isRefresh) tbody.classList.remove('fading');
@@ -320,10 +342,9 @@
     }, 1000);
   }
 
-  // ===== 投票流程 =====
+  // ===== 投票流程（含 IP 限制訊息改彈窗） =====
   async function vote(id){
     if (hasVotedGlobal()) return;
-    errEl.textContent = '';
     showLoading();
     try{
       const res = await fetch(API_URL, {
@@ -331,17 +352,40 @@
         body: JSON.stringify({
           action: 'vote',
           id,
-          voterIp: CLIENT_IP,               // ← 新增：外網 IP
-          ua: navigator.userAgent || ''     // ← 新增：瀏覽器 UA
+          voterIp: CLIENT_IP,
+          ua: navigator.userAgent || ''
         })
       });
       if(!res.ok) throw new Error('HTTP ' + res.status);
       const json = await res.json();
-      if(!json.success){ throw new Error(json.msg || '投票失敗'); }
 
+      if(!json.success){
+        // IP 限制
+        if (json.code === 'IP_DUP') {
+          showMsg('已投過票', '此 IP 已投過票，不能重複投票。');
+          // 鎖住按鈕，避免重複嘗試
+          setVotedGlobal();
+          document.querySelectorAll('button.vote').forEach(b=>{
+            b.textContent = '投票完畢';
+            b.disabled = true;
+          });
+          hideLoading();
+          return;
+        }
+        if (json.code === 'IP_REQUIRED') {
+          showMsg('暫時無法投票', '未取得 IP，請稍後再試或重新整理頁面。');
+          hideLoading();
+          return;
+        }
+        // 其他錯誤
+        showMsg('投票失敗', json.msg || '發生未知錯誤');
+        hideLoading();
+        return;
+      }
+
+      // 成功：更新票數、鎖定、提示
       const cell = document.getElementById('v-' + id);
       if (cell) cell.textContent = json.votes;
-
       const found = rows.find(r=> String(r.id) === String(id));
       if (found) found.votes = json.votes;
 
@@ -356,7 +400,7 @@
       showOk();
     }catch(e){
       console.error(e);
-      errEl.textContent = '投票失敗：' + e.message;
+      showMsg('投票失敗', e.message || '發生未知錯誤');
     }finally{
       hideLoading();
     }

@@ -4,208 +4,32 @@
   <meta charset="UTF-8">
   <title>Heroes 歌唱比賽 (節目單)</title>
   <style>
-    body {
-      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-      padding: 20px;
-      text-align: center;
-      background: #111;
-      color: #f0f0f0;
-      margin: 0;
-    }
-
-    /* 粒子背景容器 */
-    #particle-background {
-      position: fixed;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
-      z-index: -1;
-      pointer-events: none;
-    }
-
-    h1 {
-      font-size: 2.2em;
-      margin-bottom: 10px;
-      color: #ffd700;
-      text-shadow: 2px 2px 4px #000, 0 0 10px #ffd700;
-      letter-spacing: 1px;
-    }
-
-    p {
-      margin-bottom: 15px;
-    }
-
-    #countdown {
-      font-weight: bold;
-      color: #00ffff;
-      text-shadow: 0 0 5px #00ffff;
-    }
-
-    #loading-overlay {
-      position: fixed;
-      top: 0;
-      left: 0;
-      right: 0;
-      bottom: 0;
-      background: rgba(0, 0, 0, 0.8);
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      font-size: 28px;
-      color: #ffd700;
-      z-index: 9999;
-      font-weight: bold;
-      text-shadow: 2px 2px 4px #000;
-      transition: opacity 0.5s ease;
-    }
-
-    table {
-      border-collapse: collapse;
-      margin: 20px auto;
-      width: 90%;
-      max-width: 1000px;
-      background: linear-gradient(145deg, #2a2a2a, #1c1c1c);
-      border: 3px solid transparent;
-      border-radius: 12px;
-      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5), inset 0 0 10px rgba(255, 255, 255, 0.1);
-      transition: all 0.3s ease;
-    }
-
-    th, td {
-      border: 1px solid #444;
-      padding: 14px 16px;
-      text-align: center;
-      font-weight: 500;
-      transition: all 0.3s ease;
-    }
-
-    th {
-      background: linear-gradient(to bottom, #666, #222);
-      color: #ffd700;
-      text-shadow: 1px 1px 2px #000;
-      font-size: 1.1em;
-      border-bottom: 2px solid #ffd700;
-    }
-
-    tbody tr {
-      background: linear-gradient(145deg, #2a2a2a, #1c1c1c);
-      transition: all 0.3s ease;
-    }
-
-    tbody tr:hover {
-      background: linear-gradient(145deg, #555, #333, #666);
-      transform: translateY(-2px);
-      box-shadow: 0 4px 15px rgba(255, 215, 0, 0.3);
-    }
-
-    .done {
-      color: #00ff9f;
-      font-weight: bold;
-      text-shadow: 0 0 5px #00ff9f;
-    }
-
-    .undone {
-      color: #aaa;
-      font-weight: normal;
-    }
-
-    /* 錯誤訊息樣式 */
-    #error-message {
-      color: #ff5555;
-      font-size: 1.2em;
-      margin: 20px auto;
-      display: none;
-    }
-
-    /* 懸浮娃娃樣式 */
-    .floating-doll {
-      position: fixed;
-      z-index: 100;
-      width: 150px; /* 預設圖片大小 */
-      height: auto;
-      cursor: grab;
-      user-select: none;
-      transition: transform 0.3s ease, left 0.1s ease, top 0.1s ease;
-      animation: float 3s ease-in-out infinite;
-    }
-
-    .floating-doll.dragging {
-      cursor: grabbing;
-      animation: none;
-      opacity: 0.8;
-    }
-
-    #doll-left {
-      left: 20px;
-      top: 50%;
-    }
-
-    #doll-right {
-      right: 20px;
-      top: 50%;
-    }
-
-    #doll-right2 {
-      right: 20px;
-      top: 10%;
-    }
-
-    /* 隱藏開關樣式 */
-    #toggle-switch {
-      position: fixed;
-      right: 20px;
-      bottom: 20px;
-      width: 80px;
-      height: 40px;
-      background: linear-gradient(145deg, #2a2a2a, #1c1c1c);
-      border: 2px solid #ffd700;
-      border-radius: 20px;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      color: #ffd700;
-      font-size: 14px;
-      font-weight: bold;
-      cursor: pointer;
-      z-index: 200;
-      box-shadow: 0 4px 8px rgba(0, 0, 0, 0.5);
-      transition: transform 0.2s ease, background 0.2s ease;
-    }
-
-    #toggle-switch:hover {
-      transform: scale(1.1);
-      background: linear-gradient(145deg, #555, #333);
-    }
-
-    /* 漂浮動畫 */
-    @keyframes float {
-      0%, 100% { transform: translateY(0); }
-      50% { transform: translateY(-10px); }
-    }
-
-    /* 響應式設計 */
-    @media (max-width: 768px) {
-      table, th, td { font-size: 14px; }
-      h1 { font-size: 1.8em; }
-      .floating-doll { width: 80px; }
-      #doll-right2 { max-width: 60px; }
-      #toggle-switch { width: 60px; height: 30px; font-size: 12px; }
-    }
-
-    @media (max-width: 480px) {
-      table, th, td { font-size: 12px; padding: 8px 10px; }
-      h1 { font-size: 1.4em; }
-      .floating-doll { width: 60px; }
-      #doll-right2 { max-width: 40px; }
-      #toggle-switch { width: 50px; height: 25px; font-size: 10px; }
-    }
-
-    /* 表格淡入淡出動畫 */
-    #table-body {
-      opacity: 1;
-      transition: opacity 0.5s ease;
-    }
+    body { font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif; padding:20px; text-align:center; background:#111; color:#f0f0f0; margin:0; }
+    #particle-background { position:fixed; top:0; left:0; width:100%; height:100%; z-index:-1; pointer-events:none; }
+    h1 { font-size:2.2em; margin-bottom:10px; color:#ffd700; text-shadow:2px 2px 4px #000, 0 0 10px #ffd700; letter-spacing:1px; }
+    p { margin-bottom:15px; }
+    #countdown { font-weight:bold; color:#00ffff; text-shadow:0 0 5px #00ffff; }
+    #loading-overlay { position:fixed; inset:0; background:rgba(0,0,0,.8); display:flex; justify-content:center; align-items:center; font-size:28px; color:#ffd700; z-index:9999; font-weight:bold; text-shadow:2px 2px 4px #000; transition:opacity .5s ease; }
+    table { border-collapse:collapse; margin:20px auto; width:90%; max-width:1000px; background:linear-gradient(145deg,#2a2a2a,#1c1c1c); border:3px solid transparent; border-radius:12px; box-shadow:0 8px 32px rgba(0,0,0,.5), inset 0 0 10px rgba(255,255,255,.1); transition:all .3s ease; }
+    th,td { border:1px solid #444; padding:14px 16px; text-align:center; font-weight:500; transition:all .3s ease; }
+    th { background:linear-gradient(to bottom,#666,#222); color:#ffd700; text-shadow:1px 1px 2px #000; font-size:1.1em; border-bottom:2px solid #ffd700; }
+    tbody tr { background:linear-gradient(145deg,#2a2a2a,#1c1c1c); transition:all .3s ease; }
+    tbody tr:hover { background:linear-gradient(145deg,#555,#333,#666); transform:translateY(-2px); box-shadow:0 4px 15px rgba(255,215,0,.3); }
+    .done { color:#00ff9f; font-weight:bold; text-shadow:0 0 5px #00ff9f; }
+    .undone { color:#aaa; }
+    #error-message { color:#ff5555; font-size:1.2em; margin:20px auto; display:none; }
+    .floating-doll { position:fixed; z-index:100; width:150px; height:auto; cursor:grab; user-select:none; transition:transform .3s ease,left .1s ease,top .1s ease; animation:float 3s ease-in-out infinite; }
+    .floating-doll.dragging { cursor:grabbing; animation:none; opacity:.8; }
+    #doll-left { left:20px; top:50%; }
+    #doll-right { right:20px; top:50%; }
+    #doll-right2 { right:20px; top:10%; }
+    #toggle-switch { position:fixed; right:20px; bottom:20px; width:80px; height:40px; background:linear-gradient(145deg,#2a2a2a,#1c1c1c); border:2px solid #ffd700; border-radius:20px; display:flex; justify-content:center; align-items:center; color:#ffd700; font-size:14px; font-weight:bold; cursor:pointer; z-index:200; box-shadow:0 4px 8px rgba(0,0,0,.5); transition:transform .2s ease, background .2s ease; }
+    #toggle-switch:hover { transform:scale(1.1); background:linear-gradient(145deg,#555,#333); }
+    @keyframes float { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-10px)} }
+    @media (max-width:768px){ table,th,td{font-size:14px} h1{font-size:1.8em} .floating-doll{width:80px} #doll-right2{max-width:60px} #toggle-switch{width:60px;height:30px;font-size:12px} }
+    @media (max-width:480px){ table,th,td{font-size:12px;padding:8px 10px} h1{font-size:1.4em} .floating-doll{width:60px} #doll-right2{max-width:40px} #toggle-switch{width:50px;height:25px;font-size:10px} }
+    #table-body { opacity:1; transition:opacity .5s ease; }
+    .updated { margin:0 auto 10px; color:#00ffff; font-size:.95em }
   </style>
 </head>
 <body>
@@ -215,20 +39,24 @@
   <img id="doll-right" class="floating-doll" src="doll-right.png" alt="Right Doll">
   <img id="doll-right2" class="floating-doll" src="doll-right2.png" alt="Right Doll2">
   <div id="toggle-switch">關閉玩偶</div>
+
   <h1>Heroes 歌唱比賽 (節目單)</h1>
   <p>⏳ 頁面將於 <span id="countdown">10</span> 秒後自動刷新</p>
-  <!-- 投票專區按鈕 -->
-	<div style="margin:14px 0 6px;">
-	  <a href="post.html" id="vote-btn"
-		 style="display:inline-block;padding:10px 18px;border:2px solid #ffd700;border-radius:10px;
-				color:#111;background:#ffd700;font-weight:700;text-decoration:none;
-				box-shadow:0 4px 12px rgba(255,215,0,.25);">
-		🎤 前往投票專區
-	  </a>
-	</div>
 
+  <!-- 投票專區按鈕（連到 post.html） -->
+  <div style="margin:14px 0 6px;">
+    <a href="post.html" id="vote-btn"
+       style="display:inline-block;padding:10px 18px;border:2px solid #ffd700;border-radius:10px;
+              color:#111;background:#ffd700;font-weight:700;text-decoration:none;
+              box-shadow:0 4px 12px rgba(255,215,0,.25);">
+      🎤 前往投票專區
+    </a>
+  </div>
+
+  <div class="updated" id="updated">更新時間：—</div>
   <div id="error-message">無法載入資料，請稍後再試</div>
-  <table id="data-table" style="display: none;">
+
+  <table id="data-table" style="display:none;">
     <thead>
       <tr>
         <th>序號</th>
@@ -241,405 +69,87 @@
   </table>
 
   <script>
-    // 粒子背景效果（保持不變）
+    // 粒子背景（原樣保留）
     const canvas = document.getElementById('particle-background');
     const ctx = canvas.getContext('2d');
-    canvas.width = window.innerWidth;
-    canvas.height = window.innerHeight;
-
-    const particlesArray = [];
-    const numberOfParticles = 80;
-
-    class Particle {
-      constructor() {
-        this.x = Math.random() * canvas.width;
-        this.y = Math.random() * canvas.height;
-        this.size = Math.random() * 2 + 1;
-        this.speedX = Math.random() * 0.4 - 0.2;
-        this.speedY = Math.random() * 0.4 - 0.2;
-        this.opacity = Math.random() * 0.2 + 0.1;
-      }
-
-      update() {
-        this.x += this.speedX;
-        this.y += this.speedY;
-        if (this.x < 0 || this.x > canvas.width) this.speedX *= -1;
-        if (this.y < 0 || this.y > canvas.height) this.speedY *= -1;
-      }
-
-      draw() {
-        ctx.fillStyle = `rgba(255, 255, 255, ${this.opacity})`;
-        ctx.beginPath();
-        ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
-        ctx.fill();
-      }
+    canvas.width = window.innerWidth; canvas.height = window.innerHeight;
+    const particlesArray = []; const numberOfParticles = 80;
+    class Particle{
+      constructor(){ this.x=Math.random()*canvas.width; this.y=Math.random()*canvas.height; this.size=Math.random()*2+1; this.speedX=Math.random()*0.4-0.2; this.speedY=Math.random()*0.4-0.2; this.opacity=Math.random()*0.2+0.1; }
+      update(){ this.x+=this.speedX; this.y+=this.speedY; if(this.x<0||this.x>canvas.width) this.speedX*=-1; if(this.y<0||this.y>canvas.height) this.speedY*=-1; }
+      draw(){ ctx.fillStyle=`rgba(255,255,255,${this.opacity})`; ctx.beginPath(); ctx.arc(this.x,this.y,this.size,0,Math.PI*2); ctx.fill(); }
     }
+    function initParticles(){ for(let i=0;i<numberOfParticles;i++){ particlesArray.push(new Particle()); } }
+    function animateParticles(){ ctx.clearRect(0,0,canvas.width,canvas.height); particlesArray.forEach(p=>{ p.update(); p.draw(); }); requestAnimationFrame(animateParticles); }
+    window.addEventListener('resize', ()=>{ canvas.width=window.innerWidth; canvas.height=window.innerHeight; });
+    initParticles(); animateParticles();
 
-    function initParticles() {
-      for (let i = 0; i < numberOfParticles; i++) {
-        particlesArray.push(new Particle());
+    // 娃娃互動（原樣保留）
+    let dollRight2ClickCount=0, dollHideCreated=false, isDollsVisible=true;
+    const dolls=document.querySelectorAll('.floating-doll');
+    dolls.forEach(doll=>{
+      let isDragging=false,currentX=0,currentY=0,initialX,initialY,speedX=0,speedY=0,lastX,lastY,lastTime,isBouncing=false,touchStartX,touchStartY;
+      doll.addEventListener('mousedown',startDragging); document.addEventListener('mousemove',drag); document.addEventListener('mouseup',stopDragging);
+      doll.addEventListener('touchstart',startDragging,{passive:false}); document.addEventListener('touchmove',drag,{passive:false}); document.addEventListener('touchend',stopDragging);
+      if(doll.id==='doll-right2'){
+        doll.addEventListener('click',()=>{ if(!isDragging && !dollHideCreated && isDollsVisible){ dollRight2ClickCount++; if(dollRight2ClickCount>=10){ createDollHide(); dollHideCreated=true; } }});
+        doll.addEventListener('touchstart',e=>{ touchStartX=e.touches[0].clientX; touchStartY=e.touches[0].clientY; },{passive:false});
+        doll.addEventListener('touchend',e=>{ if(!dollHideCreated&&isDollsVisible){ const x=e.changedTouches[0].clientX, y=e.changedTouches[0].clientY; if(Math.abs(x-touchStartX)<10 && Math.abs(y-touchStartY)<10){ dollRight2ClickCount++; if(dollRight2ClickCount>=10){ createDollHide(); dollHideCreated=true; } } }});
       }
+      function startDragging(e){ e.preventDefault(); doll.classList.add('dragging'); isDragging=true; isBouncing=false; speedX=0; speedY=0;
+        if(e.type==='touchstart'){ initialX=e.touches[0].clientX-currentX; initialY=e.touches[0].clientY-currentY; } else { initialX=e.clientX-currentX; initialY=e.clientY-currentY; }
+        lastX=e.type==='touchstart'?e.touches[0].clientX:e.clientX; lastY=e.type==='touchstart'?e.touches[0].clientY:e.clientY; lastTime=Date.now();
+      }
+      function drag(e){ if(!isDragging) return; e.preventDefault(); const now=Date.now(); const cx=(e.type==='touchmove')?e.touches[0].clientX:e.clientX; const cy=(e.type==='touchmove')?e.touches[0].clientY:e.clientY;
+        currentX=cx-initialX; currentY=cy-initialY; const dt=(now-lastTime)/1000; if(dt>0){ speedX=(cx-lastX)/dt; speedY=(cy-lastY)/dt; }
+        currentX=Math.max(0,Math.min(currentX,window.innerWidth-doll.offsetWidth)); currentY=Math.max(0,Math.min(currentY,window.innerHeight-doll.offsetHeight));
+        doll.style.left=currentX+'px'; doll.style.top=currentY+'px'; doll.style.right='auto'; lastX=cx; lastY=cy; lastTime=now;
+      }
+      function stopDragging(){ isDragging=false; doll.classList.remove('dragging'); isBouncing=true; speedX=Math.max(-500,Math.min(speedX,500)); speedY=Math.max(-500,Math.min(speedY,500)); updateBounce(); }
+      function updateBounce(){ if(!isBouncing) return; currentX+=speedX/60; currentY+=speedY/60;
+        if(currentX<=0 || currentX>=window.innerWidth-doll.offsetWidth){ speedX*=-0.8; currentX=Math.max(0,Math.min(currentX,window.innerWidth-doll.offsetWidth)); doll.style.transform='scale(1.1)'; setTimeout(()=>{ doll.style.transform=''; },100); }
+        if(currentY<=0 || currentY>=window.innerHeight-doll.offsetHeight){ speedY*=-0.8; currentY=Math.max(0,Math.min(currentY,window.innerHeight-doll.offsetHeight)); doll.style.transform='scale(1.1)'; setTimeout(()=>{ doll.style.transform=''; },100); }
+        doll.style.left=currentX+'px'; doll.style.top=currentY+'px'; speedX*=0.98; speedY*=0.98; if(Math.abs(speedX)<1 && Math.abs(speedY)<1){ isBouncing=false; } requestAnimationFrame(updateBounce);
+      }
+      if(doll.id==='doll-left'){ currentX=20; currentY=window.innerHeight/2; }
+      else if(doll.id==='doll-right'){ currentX=window.innerWidth-doll.offsetWidth-20; currentY=window.innerHeight/2; }
+      else if(doll.id==='doll-right2'){ currentX=window.innerWidth-doll.offsetWidth-20; currentY=window.innerHeight*0.1; }
+      doll.style.left=currentX+'px'; doll.style.top=currentY+'px';
+    });
+    function createDollHide(){
+      const base=document.getElementById('doll-right2'); const img=document.createElement('img');
+      img.id='doll-hide'; img.className='floating-doll'; img.src='doll-hide.png'; img.alt='Doll Hide';
+      const ox=parseFloat(base.style.left)|| (window.innerWidth-100), oy=parseFloat(base.style.top)|| (window.innerHeight*0.1);
+      img.style.left=Math.min(ox+20,window.innerWidth-100)+'px'; img.style.top=Math.min(oy+20,window.innerHeight-100)+'px';
+      img.style.display=isDollsVisible?'block':'none'; document.body.appendChild(img);
+      // 讓新生的 doll-hide 也能拖曳（複用簡化版）
+      let isDragging=false,cx=parseFloat(img.style.left),cy=parseFloat(img.style.top),ix,iy,sx=0,sy=0,lx,ly,lt,isBouncing=false;
+      img.addEventListener('mousedown',sd); document.addEventListener('mousemove',dg); document.addEventListener('mouseup',ed);
+      img.addEventListener('touchstart',sd,{passive:false}); document.addEventListener('touchmove',dg,{passive:false}); document.addEventListener('touchend',ed);
+      function sd(e){ e.preventDefault(); img.classList.add('dragging'); isDragging=true; isBouncing=false; sx=sy=0; if(e.type==='touchstart'){ ix=e.touches[0].clientX-cx; iy=e.touches[0].clientY-cy; } else { ix=e.clientX-cx; iy=e.clientY-cy; } lx=e.type==='touchstart'?e.touches[0].clientX:e.clientX; ly=e.type==='touchstart'?e.touches[0].clientY:e.clientY; lt=Date.now(); }
+      function dg(e){ if(!isDragging) return; e.preventDefault(); const now=Date.now(); const x=(e.type==='touchmove')?e.touches[0].clientX:e.clientX; const y=(e.type==='touchmove')?e.touches[0].clientY:e.clientY; cx=x-ix; cy=y-iy; const dt=(now-lt)/1000; if(dt>0){ sx=(x-lx)/dt; sy=(y-ly)/dt; } cx=Math.max(0,Math.min(cx,window.innerWidth-img.offsetWidth)); cy=Math.max(0,Math.min(cy,window.innerHeight-img.offsetHeight)); img.style.left=cx+'px'; img.style.top=cy+'px'; img.style.right='auto'; lx=x; ly=y; lt=now; }
+      function ed(){ isDragging=false; img.classList.remove('dragging'); isBouncing=true; sx=Math.max(-500,Math.min(sx,500)); sy=Math.max(-500,Math.min(sy,500)); (function ub(){ if(!isBouncing) return; cx+=sx/60; cy+=sy/60; if(cx<=0||cx>=window.innerWidth-img.offsetWidth){ sx*=-0.8; cx=Math.max(0,Math.min(cx,window.innerWidth-img.offsetWidth)); img.style.transform='scale(1.1)'; setTimeout(()=>img.style.transform='',100); } if(cy<=0||cy>=window.innerHeight-img.offsetHeight){ sy*=-0.8; cy=Math.max(0,Math.min(cy,window.innerHeight-img.offsetHeight)); img.style.transform='scale(1.1)'; setTimeout(()=>img.style.transform='',100); } img.style.left=cx+'px'; img.style.top=cy+'px'; sx*=0.98; sy*=0.98; if(Math.abs(sx)<1 && Math.abs(sy)<1){ isBouncing=false; } requestAnimationFrame(ub); })(); }
     }
-
-    function animateParticles() {
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
-      particlesArray.forEach(particle => {
-        particle.update();
-        particle.draw();
-      });
-      requestAnimationFrame(animateParticles);
-    }
-
-    window.addEventListener('resize', () => {
-      canvas.width = window.innerWidth;
-      canvas.height = window.innerHeight;
+    const toggleSwitch=document.getElementById('toggle-switch');
+    toggleSwitch.addEventListener('click',()=>{
+      isDollsVisible=!isDollsVisible;
+      ['doll-left','doll-right','doll-right2','doll-hide'].forEach(id=>{ const el=document.getElementById(id); if(el) el.style.display=isDollsVisible?'block':'none'; });
+      toggleSwitch.innerText=isDollsVisible?'關閉玩偶':'開啟玩偶';
     });
 
-    initParticles();
-    animateParticles();
-
-    // 拖曳與甩動反彈功能，並新增點擊 doll-right2 10 次出現 doll-hide
-    let dollRight2ClickCount = 0; // 記錄 doll-right2 點擊次數
-    let dollHideCreated = false; // 標記是否已創建 doll-hide
-    let isDollsVisible = true; // 追蹤娃娃顯示狀態
-
-    const dolls = document.querySelectorAll('.floating-doll');
-    dolls.forEach(doll => {
-      let isDragging = false;
-      let currentX, currentY, initialX, initialY;
-      let speedX = 0, speedY = 0;
-      let lastX, lastY, lastTime; // 用於計算甩動速度
-      let isBouncing = false; // 是否處於反彈狀態
-      let touchStartX, touchStartY; // 記錄觸控開始座標
-
-      // 滑鼠事件
-      doll.addEventListener('mousedown', startDragging);
-      document.addEventListener('mousemove', drag);
-      document.addEventListener('mouseup', stopDragging);
-
-      // 觸控事件
-      doll.addEventListener('touchstart', startDragging, { passive: false });
-      document.addEventListener('touchmove', drag, { passive: false });
-      document.addEventListener('touchend', stopDragging);
-
-      // 為 doll-right2 添加點擊和觸控點擊檢測
-      if (doll.id === 'doll-right2') {
-        // 滑鼠點擊
-        doll.addEventListener('click', () => {
-          if (!isDragging && !dollHideCreated && isDollsVisible) {
-            dollRight2ClickCount++;
-            if (dollRight2ClickCount >= 10) {
-              createDollHide();
-              dollHideCreated = true;
-            }
-          }
-        });
-
-        // 觸控點擊檢測
-        doll.addEventListener('touchstart', (e) => {
-          touchStartX = e.touches[0].clientX;
-          touchStartY = e.touches[0].clientY;
-        }, { passive: false });
-
-        doll.addEventListener('touchend', (e) => {
-          if (!dollHideCreated && isDollsVisible) {
-            const touchEndX = e.changedTouches[0].clientX;
-            const touchEndY = e.changedTouches[0].clientY;
-            // 若觸控移動距離小於 10 像素，視為點擊
-            if (Math.abs(touchEndX - touchStartX) < 10 && Math.abs(touchEndY - touchStartY) < 10) {
-              dollRight2ClickCount++;
-              if (dollRight2ClickCount >= 10) {
-                createDollHide();
-                dollHideCreated = true;
-              }
-            }
-          }
-        });
-      }
-
-      function startDragging(e) {
-        e.preventDefault();
-        doll.classList.add('dragging');
-        isDragging = true;
-        isBouncing = false; // 停止反彈
-        speedX = 0;
-        speedY = 0;
-
-        if (e.type === 'touchstart') {
-          initialX = e.touches[0].clientX - currentX;
-          initialY = e.touches[0].clientY - currentY;
-        } else {
-          initialX = e.clientX - currentX;
-          initialY = e.clientY - currentY;
-        }
-
-        // 初始化速度計算
-        lastX = e.type === 'touchstart' ? e.touches[0].clientX : e.clientX;
-        lastY = e.type === 'touchstart' ? e.touches[0].clientY : e.clientY;
-        lastTime = Date.now();
-      }
-
-      function drag(e) {
-        if (isDragging) {
-          e.preventDefault();
-          const currentTime = Date.now();
-          let clientX, clientY;
-
-          if (e.type === 'touchmove') {
-            clientX = e.touches[0].clientX;
-            clientY = e.touches[0].clientY;
-          } else {
-            clientX = e.clientX;
-            clientY = e.clientY;
-          }
-
-          currentX = clientX - initialX;
-          currentY = clientY - initialY;
-
-          // 計算速度（像素/秒）
-          const deltaTime = (currentTime - lastTime) / 1000;
-          if (deltaTime > 0) {
-            speedX = (clientX - lastX) / deltaTime;
-            speedY = (clientY - lastY) / deltaTime;
-          }
-
-          // 限制拖曳範圍
-          currentX = Math.max(0, Math.min(currentX, window.innerWidth - doll.offsetWidth));
-          currentY = Math.max(0, Math.min(currentY, window.innerHeight - doll.offsetHeight));
-
-          doll.style.left = currentX + 'px';
-          doll.style.top = currentY + 'px';
-          doll.style.right = 'auto';
-
-          // 更新上次位置和時間
-          lastX = clientX;
-          lastY = clientY;
-          lastTime = currentTime;
-        }
-      }
-
-      function stopDragging() {
-        isDragging = false;
-        doll.classList.remove('dragging');
-        isBouncing = true; // 啟動反彈
-        // 限制初始速度，防止過快
-        speedX = Math.max(-500, Math.min(speedX, 500));
-        speedY = Math.max(-500, Math.min(speedY, 500));
-        updateBounce();
-      }
-
-      // 反彈動畫
-      function updateBounce() {
-        if (isBouncing) {
-          currentX += speedX / 60; // 假設 60fps
-          currentY += speedY / 60;
-
-          // 邊界檢測與反彈
-          if (currentX <= 0 || currentX >= window.innerWidth - doll.offsetWidth) {
-            speedX *= -0.8; // 反轉並輕微減速
-            currentX = Math.max(0, Math.min(currentX, window.innerWidth - doll.offsetWidth));
-            doll.style.transform = 'scale(1.1)'; // 反彈時短暫放大
-            setTimeout(() => { doll.style.transform = ''; }, 100);
-          }
-          if (currentY <= 0 || currentY >= window.innerHeight - doll.offsetHeight) {
-            speedY *= -0.8; // 反轉並輕微減速
-            currentY = Math.max(0, Math.min(currentY, window.innerHeight - doll.offsetHeight));
-            doll.style.transform = 'scale(1.1)';
-            setTimeout(() => { doll.style.transform = ''; }, 100);
-          }
-
-          doll.style.left = currentX + 'px';
-          doll.style.top = currentY + 'px';
-
-          // 速度衰減
-          speedX *= 0.98;
-          speedY *= 0.98;
-
-          // 當速度低於閾值時停止反彈，恢復漂浮
-          if (Math.abs(speedX) < 1 && Math.abs(speedY) < 1) {
-            isBouncing = false;
-          }
-
-          requestAnimationFrame(updateBounce);
-        }
-      }
-
-      // 初始化位置
-      if (doll.id === 'doll-left') {
-        currentX = 20;
-        currentY = window.innerHeight / 2;
-      } else if (doll.id === 'doll-right') {
-        currentX = window.innerWidth - doll.offsetWidth - 20;
-        currentY = window.innerHeight / 2;
-      } else if (doll.id === 'doll-right2') {
-        currentX = window.innerWidth - doll.offsetWidth - 20;
-        currentY = window.innerHeight * 0.1;
-      }
-
-      doll.style.left = currentX + 'px';
-      doll.style.top = currentY + 'px';
-    });
-
-    // 創建 doll-hide 圖片的函數
-    function createDollHide() {
-      const dollHide = document.createElement('img');
-      dollHide.id = 'doll-hide';
-      dollHide.className = 'floating-doll';
-      dollHide.src = 'doll-hide.png';
-      dollHide.alt = 'Doll Hide';
-      // 初始化位置（接近 doll-right2，略微偏移）
-      const dollRight2 = document.getElementById('doll-right2');
-      const offsetX = parseFloat(dollRight2.style.left) + 20; // 右移 20px
-      const offsetY = parseFloat(dollRight2.style.top) + 20; // 下移 20px
-      dollHide.style.left = Math.min(offsetX, window.innerWidth - 100) + 'px'; // 確保不超出邊界
-      dollHide.style.top = Math.min(offsetY, window.innerHeight - 100) + 'px';
-      dollHide.style.display = isDollsVisible ? 'block' : 'none'; // 根據開關狀態設置顯示
-      document.body.appendChild(dollHide);
-
-      // 為 doll-hide 應用相同的拖曳與反彈邏輯
-      let isDragging = false;
-      let currentX = parseFloat(dollHide.style.left);
-      let currentY = parseFloat(dollHide.style.top);
-      let initialX, initialY;
-      let speedX = 0, speedY = 0;
-      let lastX, lastY, lastTime;
-      let isBouncing = false;
-
-      dollHide.addEventListener('mousedown', startDragging);
-      document.addEventListener('mousemove', drag);
-      document.addEventListener('mouseup', stopDragging);
-      dollHide.addEventListener('touchstart', startDragging, { passive: false });
-      document.addEventListener('touchmove', drag, { passive: false });
-      document.addEventListener('touchend', stopDragging);
-
-      function startDragging(e) {
-        e.preventDefault();
-        dollHide.classList.add('dragging');
-        isDragging = true;
-        isBouncing = false;
-        speedX = 0;
-        speedY = 0;
-
-        if (e.type === 'touchstart') {
-          initialX = e.touches[0].clientX - currentX;
-          initialY = e.touches[0].clientY - currentY;
-        } else {
-          initialX = e.clientX - currentX;
-          initialY = e.clientY - currentY;
-        }
-
-        lastX = e.type === 'touchstart' ? e.touches[0].clientX : e.clientX;
-        lastY = e.type === 'touchstart' ? e.touches[0].clientY : e.clientY;
-        lastTime = Date.now();
-      }
-
-      function drag(e) {
-        if (isDragging) {
-          e.preventDefault();
-          const currentTime = Date.now();
-          let clientX, clientY;
-
-          if (e.type === 'touchmove') {
-            clientX = e.touches[0].clientX;
-            clientY = e.touches[0].clientY;
-          } else {
-            clientX = e.clientX;
-            clientY = e.clientY;
-          }
-
-          currentX = clientX - initialX;
-          currentY = clientY - initialY;
-
-          const deltaTime = (currentTime - lastTime) / 1000;
-          if (deltaTime > 0) {
-            speedX = (clientX - lastX) / deltaTime;
-            speedY = (clientY - lastY) / deltaTime;
-          }
-
-          currentX = Math.max(0, Math.min(currentX, window.innerWidth - dollHide.offsetWidth));
-          currentY = Math.max(0, Math.min(currentY, window.innerHeight - dollHide.offsetHeight));
-
-          dollHide.style.left = currentX + 'px';
-          dollHide.style.top = currentY + 'px';
-          dollHide.style.right = 'auto';
-
-          lastX = clientX;
-          lastY = clientY;
-          lastTime = currentTime;
-        }
-      }
-
-      function stopDragging() {
-        isDragging = false;
-        dollHide.classList.remove('dragging');
-        isBouncing = true;
-        speedX = Math.max(-500, Math.min(speedX, 500));
-        speedY = Math.max(-500, Math.min(speedY, 500));
-        updateBounce();
-      }
-
-      function updateBounce() {
-        if (isBouncing) {
-          currentX += speedX / 60;
-          currentY += speedY / 60;
-
-          if (currentX <= 0 || currentX >= window.innerWidth - dollHide.offsetWidth) {
-            speedX *= -0.8;
-            currentX = Math.max(0, Math.min(currentX, window.innerWidth - dollHide.offsetWidth));
-            dollHide.style.transform = 'scale(1.1)';
-            setTimeout(() => { dollHide.style.transform = ''; }, 100);
-          }
-          if (currentY <= 0 || currentY >= window.innerHeight - dollHide.offsetHeight) {
-            speedY *= -0.8;
-            currentY = Math.max(0, Math.min(currentY, window.innerHeight - dollHide.offsetHeight));
-            dollHide.style.transform = 'scale(1.1)';
-            setTimeout(() => { dollHide.style.transform = ''; }, 100);
-          }
-
-          dollHide.style.left = currentX + 'px';
-          dollHide.style.top = currentY + 'px';
-
-          speedX *= 0.98;
-          speedY *= 0.98;
-
-          if (Math.abs(speedX) < 1 && Math.abs(speedY) < 1) {
-            isBouncing = false;
-          }
-
-          requestAnimationFrame(updateBounce);
-        }
-      }
-    }
-
-    // 隱藏開關邏輯
-    const toggleSwitch = document.getElementById('toggle-switch');
-    toggleSwitch.addEventListener('click', () => {
-      isDollsVisible = !isDollsVisible;
-      const dollLeft = document.getElementById('doll-left');
-      const dollRight = document.getElementById('doll-right');
-      const dollRight2 = document.getElementById('doll-right2');
-      const dollHide = document.getElementById('doll-hide');
-      dollLeft.style.display = isDollsVisible ? 'block' : 'none';
-      dollRight.style.display = isDollsVisible ? 'block' : 'none';
-      dollRight2.style.display = isDollsVisible ? 'block' : 'none';
-      if (dollHide) {
-        dollHide.style.display = isDollsVisible ? 'block' : 'none';
-      }
-      toggleSwitch.innerText = isDollsVisible ? '關閉玩偶' : '開啟玩偶';
-    });
-
-    // 表單邏輯
-    const API_URL = "https://script.google.com/macros/s/AKfycbzMq6VQBIvzeG9xZjk1Hw1UE4UhrmaVyZi6UiiOpsdPrvMJAy-PS4GklxPuF8FGQb0JiQ/exec";
+    // ===== 這裡開始是資料載入邏輯（做了相容處理） =====
+    // 重要：這個 API_URL 請與 post.html 保持一致（同一個 /exec）
+    const API_URL = "https://script.google.com/macros/s/AKfycbwZR2cTWJ3krasfegEf4ndSzkhnplT73I-yUoZ7VKxs93jd3aTRfu5cJJ1W9BDjoVjp/exec";
     const POLL_SECONDS = 10;
     let countdown = POLL_SECONDS;
     let firstLoad = true;
     let countdownInterval = null;
 
-    function startCountdown() {
+    function startCountdown(){
       if (countdownInterval) return;
-      countdownInterval = setInterval(() => {
+      countdownInterval = setInterval(()=>{
         countdown--;
-        if (countdown <= 0) {
+        if (countdown <= 0){
           countdown = POLL_SECONDS;
           fetchData(true);
         }
@@ -647,76 +157,85 @@
       }, 1000);
     }
 
-    async function fetchData(isRefresh = false) {
-      const loadingOverlay = document.getElementById("loading-overlay");
-      const errorMessage = document.getElementById("error-message");
-      const dataTable = document.getElementById("data-table");
-      const tbody = document.getElementById("table-body");
+    // 兼容：data 可能是「陣列」或「{rows:[...]}」
+    function extractRows(data){
+      if (Array.isArray(data)) return data;
+      if (data && Array.isArray(data.rows)) return data.rows;
+      throw new Error("資料格式不正確（非陣列且不含 rows）");
+    }
 
-      try {
-        const res = await fetch(API_URL, { cache: "no-store" });
-        if (!res.ok) throw new Error(`HTTP error! Status: ${res.status}`);
+    function validateRowShape(rows){
+      // 確保每列至少有 id/title/singer/done
+      const ok = rows.every(r => r && 'id' in r && 'title' in r && 'singer' in r && 'done' in r);
+      if (!ok) throw new Error("資料缺少必要欄位：id / title / singer / done");
+    }
+
+    async function fetchData(isRefresh=false){
+      const loadingOverlay = document.getElementById("loading-overlay");
+      const errorMessage  = document.getElementById("error-message");
+      const dataTable     = document.getElementById("data-table");
+      const tbody         = document.getElementById("table-body");
+      const updatedEl     = document.getElementById("updated");
+
+      try{
+        const res = await fetch(API_URL, { cache:"no-store" });
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
         const data = await res.json();
 
-        if (!Array.isArray(data) || data.length === 0 || !data.every(row => 'id' in row && 'title' in row && 'singer' in row && 'done' in row)) {
-          throw new Error("資料格式不正確，缺少必要的欄位：id, title, singer, done");
-        }
+        const rows = extractRows(data);
+        validateRowShape(rows);
 
-        if (firstLoad) {
-          renderTable(data);
+        if (firstLoad){
+          renderTable(rows);
           firstLoad = false;
           loadingOverlay.style.opacity = 0;
-          setTimeout(() => {
-            loadingOverlay.style.display = "none";
-            dataTable.style.display = "table";
-          }, 500);
+          setTimeout(()=>{ loadingOverlay.style.display = "none"; dataTable.style.display = "table"; }, 500);
           startCountdown();
-        } else if (isRefresh) {
+        }else if (isRefresh){
           tbody.style.opacity = 0;
-          setTimeout(() => {
-            renderTable(data);
-            tbody.style.opacity = 1;
-          }, 500);
-        } else {
-          renderTable(data);
+          setTimeout(()=>{ renderTable(rows); tbody.style.opacity = 1; }, 500);
+        }else{
+          renderTable(rows);
         }
+
+        updatedEl.textContent = '更新時間：' + new Date().toLocaleString();
         errorMessage.style.display = "none";
-      } catch (err) {
+      }catch(err){
         console.error("讀取失敗", err);
-        errorMessage.textContent = `無法載入資料：${err.message}，請稍後再試`;
-        if (firstLoad) {
+        const msg = (err && err.message) ? err.message : String(err);
+        document.getElementById("error-message").textContent = `無法載入資料：${msg}，請稍後再試`;
+        if (firstLoad){
           loadingOverlay.style.display = "none";
           errorMessage.style.display = "block";
-        } else {
+        }else{
           errorMessage.style.display = "block";
         }
       }
     }
 
-    function renderTable(rows) {
+    function renderTable(rows){
       const tbody = document.getElementById("table-body");
       tbody.innerHTML = "";
-      if (rows.length === 0) {
+      if (!rows.length){
         const tr = document.createElement("tr");
         tr.innerHTML = `<td colspan="4">暫無資料</td>`;
         tbody.appendChild(tr);
         return;
       }
-      rows.sort((a, b) => a.id - b.id).forEach(row => {
-        const doneClass = row.done ? "done" : "undone";
+      rows.slice().sort((a,b)=> Number(a.id)-Number(b.id)).forEach(row=>{
         const tr = document.createElement("tr");
         tr.innerHTML = `
           <td>${row.id}</td>
           <td>${row.title}</td>
           <td>${row.singer}</td>
-          <td class="${doneClass}">${row.done ? "已完成" : "未完成"}</td>
+          <td class="${row.done ? "done" : "undone"}">${row.done ? "已完成" : "未完成"}</td>
         `;
         tbody.appendChild(tr);
       });
     }
 
+    // 啟動
     fetchData();
   </script>
 </body>
-
 </html>
