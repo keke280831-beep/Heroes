@@ -10,7 +10,7 @@
     /* 粒子背景畫布：固定鋪滿、置底、不擋互動 */
     #particle-background{
       position:fixed;top:0;left:0;width:100vw;height:100vh;z-index:-1;pointer-events:none;
-      filter:opacity(.55); /* 整體降低存在感，避免影響可讀性 */
+      filter:opacity(.55);
     }
 
     h1{color:#ffd700;text-shadow:2px 2px 4px #000,0 0 10px #ffd700;margin:8px 0 6px}
@@ -125,10 +125,10 @@
 
 <script>
   // === 設定區 ===
+  // 換成你實際的 Apps Script /exec 連結
   const API_URL = "https://script.google.com/macros/s/AKfycbzMq6VQBIvzeG9xZjk1Hw1UE4UhrmaVyZi6UiiOpsdPrvMJAy-PS4GklxPuF8FGQb0JiQ/exec";
   const VOTED_GLOBAL_KEY = "heroes_voted_global";
-  const POLL_SECONDS = 15; // 自動刷新秒數
-  // ==============
+  const POLL_SECONDS = 15;
 
   const tbody = document.getElementById('tbody');
   const errEl = document.getElementById('err');
@@ -152,6 +152,18 @@
   let countdown = POLL_SECONDS;
   let countdownTimer = null;
 
+  // ===== 取得外網 IP（非阻塞） =====
+  let CLIENT_IP = 'unknown';
+  async function fetchClientIP(){
+    try{
+      // ipify 公開服務，無需 API Key
+      const r = await fetch('https://api.ipify.org?format=json', { cache:'no-store' });
+      const j = await r.json();
+      if (j && j.ip) CLIENT_IP = j.ip;
+    }catch(_){}
+  }
+  fetchClientIP();
+
   // ===== 粒子背景 =====
   (function initParticles(){
     const canvas = document.getElementById('particle-background');
@@ -160,15 +172,15 @@
     resize(); window.addEventListener('resize', resize);
 
     const particles = [];
-    const COUNT = Math.min(100, Math.floor((window.innerWidth*window.innerHeight)/15000)); // 依視窗大小調整數量
+    const COUNT = Math.min(100, Math.floor((window.innerWidth*window.innerHeight)/15000));
     for(let i=0;i<COUNT;i++){
       particles.push({
         x: Math.random()*canvas.width,
         y: Math.random()*canvas.height,
-        r: Math.random()*2 + 1,         // 小顆一點，避免干擾
+        r: Math.random()*2 + 1,
         vx: (Math.random()*0.4 - 0.2),
         vy: (Math.random()*0.4 - 0.2),
-        a: Math.random()*1        // 低透明
+        a: Math.random()*1
       });
     }
     function step(){
@@ -280,7 +292,7 @@
       if(!res.ok) throw new Error('HTTP ' + res.status);
       const data = await res.json();
       rows = Array.isArray(data) ? data.slice().sort((a,b)=>Number(a.id)-Number(b.id)) : [];
-      applyFilter(); // 以目前搜尋狀態渲染
+      applyFilter();
       updatedEl.textContent = '更新時間：' + new Date().toLocaleString();
       updateTop3();
     }catch(e){
@@ -302,7 +314,7 @@
       countdown--;
       if(countdown <= 0){
         countdown = POLL_SECONDS;
-        load(true); // 靜默刷新
+        load(true);
       }
       countdownEl.textContent = countdown;
     }, 1000);
@@ -316,7 +328,12 @@
     try{
       const res = await fetch(API_URL, {
         method: 'POST',
-        body: JSON.stringify({ action:'vote', id })
+        body: JSON.stringify({
+          action: 'vote',
+          id,
+          voterIp: CLIENT_IP,               // ← 新增：外網 IP
+          ua: navigator.userAgent || ''     // ← 新增：瀏覽器 UA
+        })
       });
       if(!res.ok) throw new Error('HTTP ' + res.status);
       const json = await res.json();
@@ -328,7 +345,6 @@
       const found = rows.find(r=> String(r.id) === String(id));
       if (found) found.votes = json.votes;
 
-      // 鎖定所有按鈕並顯示「投票完畢」
       setVotedGlobal();
       document.querySelectorAll('button.vote').forEach(b=>{
         b.textContent = '投票完畢';
@@ -352,5 +368,3 @@
 </script>
 </body>
 </html>
-
-
