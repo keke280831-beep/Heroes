@@ -99,7 +99,7 @@
     </div>
   </div>
 
-  <!-- 通用訊息 Modal（錯誤/提示） -->
+  <!-- 通用訊息 Modal（錯誤/提示/截止彈窗） -->
   <div id="msg-overlay" class="modal-overlay">
     <div class="modal">
       <h3 id="msg-title">提示</h3>
@@ -137,6 +137,7 @@
   const API_URL = "https://script.google.com/macros/s/AKfycbwZR2cTWJ3krasfegEf4ndSzkhnplT73I-yUoZ7VKxs93jd3aTRfu5cJJ1W9BDjoVjp/exec";
   const VOTED_GLOBAL_KEY = "heroes_voted_global";
   const POLL_SECONDS = 15;
+  const VOTING_CLOSED = true; // ← 一進站即顯示截止、且按鈕關閉
 
   const tbody = document.getElementById('tbody');
   const errEl = document.getElementById('err');
@@ -173,7 +174,7 @@
     resize(); window.addEventListener('resize', resize);
 
     const particles = [];
-    const COUNT = Math.min(100, Math.floor((window.innerWidth*window.innerHeight)/15000));
+    const COUNT = Math.min(120, Math.floor((window.innerWidth*window.innerHeight)/12000));
     for(let i=0;i<COUNT;i++){
       particles.push({
         x: Math.random()*canvas.width,
@@ -181,7 +182,7 @@
         r: Math.random()*2 + 1,
         vx: (Math.random()*0.4 - 0.2),
         vy: (Math.random()*0.4 - 0.2),
-        a: Math.random()*1
+        a: Math.random()*0.9 + 0.1
       });
     }
     function step(){
@@ -238,14 +239,15 @@
     }
     list.forEach(r=>{
       const tr = document.createElement('tr');
+      const disabled = VOTING_CLOSED || votedAll;
       tr.innerHTML = `
         <td>${r.id ?? ''}</td>
         <td>${r.title ?? ''}</td>
         <td>${r.singer ?? ''}</td>
         <td id="v-${r.id}">${typeof r.votes === 'number' ? r.votes : 0}</td>
         <td>
-          <button class="vote" id="b-${r.id}" ${votedAll ? 'disabled' : ''}>
-            ${votedAll ? '投票完畢' : '投他一票'}
+          <button class="vote" id="b-${r.id}" ${disabled ? 'disabled' : ''}>
+            ${ VOTING_CLOSED ? '投票已截止' : (votedAll ? '投票完畢' : '投他一票') }
           </button>
         </td>
       `;
@@ -292,7 +294,7 @@
     `).join('') || `<li class="rank-item"><div>暫無資料</div></li>`;
   }
 
-  // ===== 取得外網 IP（非阻塞） =====
+  // ===== 取得外網 IP（非阻塞；雖然截止了，保留不影響） =====
   let CLIENT_IP = 'unknown';
   async function fetchClientIP(){
     try{
@@ -312,13 +314,13 @@
       const res = await fetch(API_URL, { cache:'no-store' });
       if(!res.ok) throw new Error('HTTP ' + res.status);
       const data = await res.json();
-      rows = Array.isArray(data) ? data.slice().sort((a,b)=>Number(a.id)-Number(b.id)) : (Array.isArray(data.rows) ? data.rows.slice().sort((a,b)=>Number(a.id)-Number(b.id)) : []);
+      rows = Array.isArray(data) ? data.slice().sort((a,b)=>Number(a.id)-Number(b.id))
+           : (Array.isArray(data.rows) ? data.rows.slice().sort((a,b)=>Number(a.id)-Number(b.id)) : []);
       applyFilter();
       updatedEl.textContent = '更新時間：' + new Date().toLocaleString();
       updateTop3();
     }catch(e){
       console.error(e);
-      // 改用彈窗顯示錯誤
       showMsg('讀取失敗', e.message || '發生未知錯誤');
       if(!isRefresh) tbody.innerHTML = `<tr><td colspan="5">讀取失敗</td></tr>`;
     }finally{
@@ -342,13 +344,19 @@
     }, 1000);
   }
 
-  // ===== 投票流程（含 IP 限制訊息改彈窗） =====
+  // ===== 投票流程（截止：不送請求，直接彈窗） =====
   async function vote(id){
+    if (VOTING_CLOSED){
+      showMsg('投票已截止', '最終結果裁判依照正常數值計算');
+      return;
+    }
     if (hasVotedGlobal()) return;
+
     showLoading();
     try{
       const res = await fetch(API_URL, {
         method: 'POST',
+        headers: { 'Content-Type': 'text/plain;charset=UTF-8' },
         body: JSON.stringify({
           action: 'vote',
           id,
@@ -360,30 +368,23 @@
       const json = await res.json();
 
       if(!json.success){
-        // IP 限制
         if (json.code === 'IP_DUP') {
           showMsg('已投過票', '此 IP 已投過票，不能重複投票。');
-          // 鎖住按鈕，避免重複嘗試
           setVotedGlobal();
           document.querySelectorAll('button.vote').forEach(b=>{
             b.textContent = '投票完畢';
             b.disabled = true;
           });
-          hideLoading();
           return;
         }
         if (json.code === 'IP_REQUIRED') {
           showMsg('暫時無法投票', '未取得 IP，請稍後再試或重新整理頁面。');
-          hideLoading();
           return;
         }
-        // 其他錯誤
         showMsg('投票失敗', json.msg || '發生未知錯誤');
-        hideLoading();
         return;
       }
 
-      // 成功：更新票數、鎖定、提示
       const cell = document.getElementById('v-' + id);
       if (cell) cell.textContent = json.votes;
       const found = rows.find(r=> String(r.id) === String(id));
@@ -408,7 +409,13 @@
 
   // ===== 啟動 =====
   searchEl.addEventListener('input', applyFilter);
-  load(false).then(()=>{ startCountdown(); });
+  load(false).then(()=>{
+    startCountdown();
+    // 進站即彈出「已截止」
+    if (VOTING_CLOSED){
+      showMsg('投票已截止', '最終結果裁判依照正常數值計算');
+    }
+  });
 </script>
 </body>
 </html>
